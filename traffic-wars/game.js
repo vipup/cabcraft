@@ -239,26 +239,37 @@ class TrafficSimulator extends Phaser.Scene {
     }
     
     setupInputHandlers() {
-        // Click to spawn riders/drivers at clicked location
+        // Initialize dragging state
+        this.isDragging = false;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
+        this.cameraStartX = 0;
+        this.cameraStartY = 0;
+        
+        // Left-click and drag to pan camera (more intuitive)
         this.input.on('pointerdown', (pointer) => {
             if (pointer.leftButtonDown()) {
-                this.handleLeftClick(pointer);
-            }
-        });
-        
-        // Drag to pan camera
-        this.input.on('pointerdown', (pointer) => {
-            if (pointer.rightButtonDown()) {
+                // Check if clicking on UI elements (don't drag if clicking buttons)
+                const target = pointer.event.target;
+                if (target.tagName === 'BUTTON' || target.closest('button')) {
+                    return; // Don't start dragging if clicking UI buttons
+                }
+                
                 this.isDragging = true;
                 this.dragStartX = pointer.x;
                 this.dragStartY = pointer.y;
                 this.cameraStartX = this.cameras.main.x;
                 this.cameraStartY = this.cameras.main.y;
+                
+                // Change cursor to indicate dragging
+                document.body.style.cursor = 'grabbing';
+                
+                console.log(`Started dragging from (${this.dragStartX}, ${this.dragStartY})`);
             }
         });
         
         this.input.on('pointermove', (pointer) => {
-            if (this.isDragging && pointer.rightButtonDown()) {
+            if (this.isDragging && pointer.leftButtonDown()) {
                 const deltaX = pointer.x - this.dragStartX;
                 const deltaY = pointer.y - this.dragStartY;
                 const newX = this.cameraStartX - deltaX;
@@ -270,23 +281,43 @@ class TrafficSimulator extends Phaser.Scene {
                 
                 this.cameras.main.setPosition(clampedX, clampedY);
                 this.updateUI();
+                
+                console.log(`Dragging to (${Math.round(clampedX)}, ${Math.round(clampedY)})`);
             }
         });
         
-        this.input.on('pointerup', () => {
-            this.isDragging = false;
+        this.input.on('pointerup', (pointer) => {
+            if (this.isDragging) {
+                console.log('Stopped dragging');
+                this.isDragging = false;
+                
+                // Reset cursor
+                document.body.style.cursor = 'default';
+            }
+        });
+        
+        // Right-click for spawning units at clicked location
+        this.input.on('pointerdown', (pointer) => {
+            if (pointer.rightButtonDown()) {
+                this.handleRightClick(pointer);
+            }
         });
     }
     
     handleLeftClick(pointer) {
+        // Left-click is now used for dragging, so this function is not needed
+        // But keeping it for potential future use
+    }
+    
+    handleRightClick(pointer) {
         const worldX = pointer.worldX;
         const worldY = pointer.worldY;
         
-        // Check if clicking on a landmark
-        const landmark = this.getLandmarkAt(worldX, worldY);
-        if (landmark) {
-            console.log(`Clicked on landmark: ${landmark.name}`);
-        }
+        // Spawn a driver at right-clicked location
+        const driver = this.createDriver(worldX, worldY);
+        this.drivers.push(driver);
+        
+        console.log(`Spawned driver at right-click location (${worldX}, ${worldY})`);
     }
     
     getLandmarkAt(x, y) {
@@ -697,10 +728,17 @@ class TrafficSimulator extends Phaser.Scene {
         const viewportRight = cam.x + cam.width;
         const viewportBottom = cam.y + cam.height;
         
+        // Add some padding to viewport for smoother experience
+        const padding = 50;
+        const paddedLeft = viewportLeft - padding;
+        const paddedTop = viewportTop - padding;
+        const paddedRight = viewportRight + padding;
+        const paddedBottom = viewportBottom + padding;
+        
         // Update driver visibility
         this.drivers.forEach(driver => {
-            const isVisible = driver.x >= viewportLeft && driver.x <= viewportRight &&
-                             driver.y >= viewportTop && driver.y <= viewportBottom;
+            const isVisible = driver.x >= paddedLeft && driver.x <= paddedRight &&
+                             driver.y >= paddedTop && driver.y <= paddedBottom;
             driver.setVisible(isVisible);
             if (driver.getData('icon')) {
                 driver.getData('icon').setVisible(isVisible);
@@ -709,8 +747,8 @@ class TrafficSimulator extends Phaser.Scene {
         
         // Update rider visibility
         this.riders.forEach(rider => {
-            const isVisible = rider.x >= viewportLeft && rider.x <= viewportRight &&
-                             rider.y >= viewportTop && rider.y <= viewportBottom;
+            const isVisible = rider.x >= paddedLeft && rider.x <= paddedRight &&
+                             rider.y >= paddedTop && rider.y <= paddedBottom;
             rider.setVisible(isVisible);
             if (rider.getData('icon')) {
                 rider.getData('icon').setVisible(isVisible);
@@ -720,8 +758,8 @@ class TrafficSimulator extends Phaser.Scene {
         // Update ride request markers visibility
         this.rideRequests.forEach(rideRequest => {
             if (rideRequest.pickupMarker) {
-                const pickupVisible = rideRequest.pickupX >= viewportLeft && rideRequest.pickupX <= viewportRight &&
-                                    rideRequest.pickupY >= viewportTop && rideRequest.pickupY <= viewportBottom;
+                const pickupVisible = rideRequest.pickupX >= paddedLeft && rideRequest.pickupX <= paddedRight &&
+                                    rideRequest.pickupY >= paddedTop && rideRequest.pickupY <= paddedBottom;
                 rideRequest.pickupMarker.setVisible(pickupVisible);
                 if (rideRequest.fareText) {
                     rideRequest.fareText.setVisible(pickupVisible);
@@ -729,8 +767,8 @@ class TrafficSimulator extends Phaser.Scene {
             }
             
             if (rideRequest.dropoffMarker) {
-                const dropoffVisible = rideRequest.dropoffX >= viewportLeft && rideRequest.dropoffX <= viewportRight &&
-                                     rideRequest.dropoffY >= viewportTop && rideRequest.dropoffY <= viewportBottom;
+                const dropoffVisible = rideRequest.dropoffX >= paddedLeft && rideRequest.dropoffX <= paddedRight &&
+                                     rideRequest.dropoffY >= paddedTop && rideRequest.dropoffY <= paddedBottom;
                 rideRequest.dropoffMarker.setVisible(dropoffVisible);
             }
         });
@@ -738,8 +776,8 @@ class TrafficSimulator extends Phaser.Scene {
         // Update landmark visibility
         if (this.landmarkObjects) {
             this.landmarkObjects.forEach(landmarkObj => {
-                const isVisible = landmarkObj.marker.x >= viewportLeft && landmarkObj.marker.x <= viewportRight &&
-                                 landmarkObj.marker.y >= viewportTop && landmarkObj.marker.y <= viewportBottom;
+                const isVisible = landmarkObj.marker.x >= paddedLeft && landmarkObj.marker.x <= paddedRight &&
+                                 landmarkObj.marker.y >= paddedTop && landmarkObj.marker.y <= paddedBottom;
                 landmarkObj.marker.setVisible(isVisible);
                 landmarkObj.label.setVisible(isVisible);
             });
@@ -753,14 +791,25 @@ class TrafficSimulator extends Phaser.Scene {
                 const buildingTop = building.y - building.height / 2;
                 const buildingBottom = building.y + building.height / 2;
                 
-                const isVisible = !(buildingRight < viewportLeft || buildingLeft > viewportRight ||
-                                  buildingBottom < viewportTop || buildingTop > viewportBottom);
+                const isVisible = !(buildingRight < paddedLeft || buildingLeft > paddedRight ||
+                                  buildingBottom < paddedTop || buildingTop > paddedBottom);
                 building.setVisible(isVisible);
             });
         }
         
-        // Roads are always visible (they span the entire world)
-        // But we could add road segment visibility if needed
+        // Update road visibility (roads span the entire world, but we can optimize)
+        if (this.roadObjects) {
+            this.roadObjects.forEach(road => {
+                // Roads are always visible since they span the entire world
+                // But we could add more sophisticated culling if needed
+                road.setVisible(true);
+            });
+        }
+        
+        // Debug logging for viewport culling
+        if (this.isDragging) {
+            console.log(`Viewport culling: (${Math.round(viewportLeft)}, ${Math.round(viewportTop)}) to (${Math.round(viewportRight)}, ${Math.round(viewportBottom)})`);
+        }
     }
 
     updateDriverAI() {
