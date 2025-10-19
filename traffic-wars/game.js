@@ -52,9 +52,17 @@ class TrafficSimulator extends Phaser.Scene {
         this.cameras.main.setBounds(0, 0, this.worldWidth, this.worldHeight);
         this.cameras.main.setZoom(1);
         
+        // Start camera at center of world
+        this.cameras.main.centerOn(this.worldWidth / 2, this.worldHeight / 2);
+        
         // Create city background
         this.createCityBackground();
         console.log('City background created with roads and buildings');
+        
+        // Test: Create a simple visible rectangle to verify rendering
+        const testRect = this.add.rectangle(100, 100, 50, 50, 0xff0000);
+        testRect.setStrokeStyle(3, 0xffffff);
+        console.log('Test rectangle created at (100, 100)');
         
         // Set up input handlers
         this.setupInputHandlers();
@@ -97,45 +105,38 @@ class TrafficSimulator extends Phaser.Scene {
     createCityBackground() {
         const width = this.worldWidth;
         const height = this.worldHeight;
+        console.log(`Creating city background: ${width}x${height}`);
 
-        // City background - darker for better contrast
-        const graphics = this.add.graphics();
-        graphics.fillStyle(0x1a1a1a, 1);
-        graphics.fillRect(0, 0, width, height);
+        // Create a simple background first
+        const bg = this.add.rectangle(0, 0, width, height, 0x1a1a1a);
+        bg.setOrigin(0, 0);
+        console.log('Background rectangle created');
 
-        // Thicker, clearly visible roads with better contrast
+        // Create roads as separate rectangles for better visibility
         this.roadWidth = 32;
-        const roadColor = 0x4a5a6a; // brighter for better visibility
-        graphics.fillStyle(roadColor, 1);
-
+        const roadColor = 0x4a5a6a;
+        
         // Road grid positions
         this.roadY = [];
         this.roadX = [];
+        
+        // Horizontal roads
         for (let y = 120; y < height - 120; y += 100) {
             this.roadY.push(y);
-            graphics.fillRect(0, y - this.roadWidth / 2, width, this.roadWidth);
+            const road = this.add.rectangle(width/2, y, width, this.roadWidth, roadColor);
+            road.setOrigin(0.5, 0.5);
         }
+        
+        // Vertical roads
         for (let x = 120; x < width - 120; x += 140) {
             this.roadX.push(x);
-            graphics.fillRect(x - this.roadWidth / 2, 0, this.roadWidth, height);
+            const road = this.add.rectangle(x, height/2, this.roadWidth, height, roadColor);
+            road.setOrigin(0.5, 0.5);
         }
+        console.log(`Created ${this.roadY.length} horizontal roads and ${this.roadX.length} vertical roads`);
 
-        // Enhanced lane markers (dotted) - more visible
-        graphics.fillStyle(0xffffff, 0.4);
-        const dash = 15;
-        this.roadY.forEach(y => {
-            for (let dx = 0; dx < width; dx += dash * 2) {
-                graphics.fillRect(dx, y - 2, dash, 4);
-            }
-        });
-        this.roadX.forEach(x => {
-            for (let dy = 0; dy < height; dy += dash * 2) {
-                graphics.fillRect(x - 2, dy, 4, dash);
-            }
-        });
-
-        // Buildings between roads
-        this.createBuildingsGrid(width, height, graphics);
+        // Create buildings as separate rectangles
+        this.createBuildingsGrid(width, height);
         console.log(`Created ${this.buildings.length} buildings`);
 
         // Landmarks (named POIs)
@@ -147,9 +148,14 @@ class TrafficSimulator extends Phaser.Scene {
         this.spawnRider();
         this.spawnRider();
         console.log('Spawned initial test units');
+        
+        // Add a test rectangle at center to verify graphics are working
+        const testRect = this.add.rectangle(this.worldWidth / 2, this.worldHeight / 2, 100, 100, 0xff0000);
+        testRect.setStrokeStyle(5, 0xffffff);
+        console.log('Added test rectangle at center');
     }
 
-    createBuildingsGrid(width, height, graphics) {
+    createBuildingsGrid(width, height) {
         const blockColor = 0x8f9ca3; // brighter buildings
         const borderColor = 0x6d7d8e; // brighter borders
         const xs = [0, ...this.roadX, width];
@@ -178,10 +184,10 @@ class TrafficSimulator extends Phaser.Scene {
                         const bh = blockH / rows - pad * 2;
                         const bx = x0 + c * (blockW / cols) + pad + Math.random() * 6;
                         const by = y0 + r * (blockH / rows) + pad + Math.random() * 6;
-                        graphics.fillStyle(blockColor, 1);
-                        graphics.fillRect(bx, by, bw, bh);
-                        graphics.lineStyle(1, borderColor, 1);
-                        graphics.strokeRect(bx, by, bw, bh);
+                        
+                        // Create building as separate rectangle
+                        const building = this.add.rectangle(bx + bw/2, by + bh/2, bw, bh, blockColor);
+                        building.setStrokeStyle(1, borderColor);
                         this.buildings.push({ x: bx, y: by, w: bw, h: bh });
                     }
                 }
