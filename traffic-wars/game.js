@@ -883,7 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Game configuration
     const config = {
-        type: Phaser.AUTO,
+        type: Phaser.CANVAS, // Force Canvas rendering instead of WebGL
         width: window.innerWidth,
         height: window.innerHeight - 140, // Leave space for bottom UI
         parent: 'game-canvas',
