@@ -18,13 +18,13 @@ class TrafficSimulator extends Phaser.Scene {
         this.unitTypes = {
             rider: { 
                 color: 0x00ff00, 
-                size: 15,
+                size: 18,
                 speed: 0, // Riders don't move
                 type: 'rider'
             },
             driver: { 
                 color: 0x0066ff, 
-                size: 20,
+                size: 24,
                 speed: 100,
                 type: 'driver',
                 status: 'idle' // idle, going_to_rider, on_ride
@@ -54,6 +54,7 @@ class TrafficSimulator extends Phaser.Scene {
         
         // Create city background
         this.createCityBackground();
+        console.log('City background created with roads and buildings');
         
         // Set up input handlers
         this.setupInputHandlers();
@@ -97,14 +98,14 @@ class TrafficSimulator extends Phaser.Scene {
         const width = this.worldWidth;
         const height = this.worldHeight;
 
-        // City background
+        // City background - darker for better contrast
         const graphics = this.add.graphics();
-        graphics.fillStyle(0x22313f, 1);
+        graphics.fillStyle(0x1a1a1a, 1);
         graphics.fillRect(0, 0, width, height);
 
-        // Thicker, clearly visible roads
-        this.roadWidth = 28;
-        const roadColor = 0x314a5a; // visible contrast
+        // Thicker, clearly visible roads with better contrast
+        this.roadWidth = 32;
+        const roadColor = 0x4a5a6a; // brighter for better visibility
         graphics.fillStyle(roadColor, 1);
 
         // Road grid positions
@@ -119,30 +120,38 @@ class TrafficSimulator extends Phaser.Scene {
             graphics.fillRect(x - this.roadWidth / 2, 0, this.roadWidth, height);
         }
 
-        // Simple lane markers (dotted)
-        graphics.fillStyle(0xffffff, 0.15);
-        const dash = 12;
+        // Enhanced lane markers (dotted) - more visible
+        graphics.fillStyle(0xffffff, 0.4);
+        const dash = 15;
         this.roadY.forEach(y => {
             for (let dx = 0; dx < width; dx += dash * 2) {
-                graphics.fillRect(dx, y - 1, dash, 2);
+                graphics.fillRect(dx, y - 2, dash, 4);
             }
         });
         this.roadX.forEach(x => {
             for (let dy = 0; dy < height; dy += dash * 2) {
-                graphics.fillRect(x - 1, dy, 2, dash);
+                graphics.fillRect(x - 2, dy, 4, dash);
             }
         });
 
         // Buildings between roads
         this.createBuildingsGrid(width, height, graphics);
+        console.log(`Created ${this.buildings.length} buildings`);
 
         // Landmarks (named POIs)
         this.createLandmarks();
+        
+        // Add some initial drivers and riders for testing
+        this.spawnDriver();
+        this.spawnDriver();
+        this.spawnRider();
+        this.spawnRider();
+        console.log('Spawned initial test units');
     }
 
     createBuildingsGrid(width, height, graphics) {
-        const blockColor = 0x7f8c8d;
-        const borderColor = 0x5d6d7e;
+        const blockColor = 0x8f9ca3; // brighter buildings
+        const borderColor = 0x6d7d8e; // brighter borders
         const xs = [0, ...this.roadX, width];
         const ys = [0, ...this.roadY, height];
         this.buildings = [];
@@ -195,14 +204,16 @@ class TrafficSimulator extends Phaser.Scene {
         ];
         
         landmarks.forEach(landmark => {
-            const marker = this.add.circle(landmark.x, landmark.y, 8, 0xff6b6b);
-            marker.setStrokeStyle(2, 0xffffff);
+            const marker = this.add.circle(landmark.x, landmark.y, 12, 0xff6b6b);
+            marker.setStrokeStyle(3, 0xffffff);
             marker.setData('landmark', landmark);
             
-            // Add label
-            const label = this.add.text(landmark.x, landmark.y + 15, landmark.name, {
-                fontSize: '10px',
+            // Add label with background
+            const label = this.add.text(landmark.x, landmark.y + 20, landmark.name, {
+                fontSize: '12px',
                 fill: '#ffffff',
+                backgroundColor: '#000000',
+                padding: { x: 4, y: 2 },
                 align: 'center'
             });
             label.setOrigin(0.5);
@@ -276,7 +287,7 @@ class TrafficSimulator extends Phaser.Scene {
         const driver = this.createDriver(x, y);
         this.drivers.push(driver);
         
-        console.log(`Spawned driver at (${x}, ${y})`);
+        console.log(`Spawned driver at (${x}, ${y}) - Total drivers: ${this.drivers.length}`);
     }
     
     createRider(x, y) {
@@ -288,8 +299,8 @@ class TrafficSimulator extends Phaser.Scene {
         rider.setData('status', 'waiting'); // waiting, in_ride, completed
         rider.setData('currentRide', null);
         
-        // Add rider icon
-        const icon = this.add.text(x, y, '👤', { fontSize: '12px' });
+        // Add rider icon - larger and more visible
+        const icon = this.add.text(x, y, '👤', { fontSize: '16px' });
         icon.setOrigin(0.5);
         rider.setData('icon', icon);
         
@@ -307,8 +318,8 @@ class TrafficSimulator extends Phaser.Scene {
         driver.setData('target', null);
         driver.setData('speed', driverData.speed); // FIX: Set the speed data!
         
-        // Add driver icon
-        const icon = this.add.text(x, y, '🚗', { fontSize: '12px' });
+        // Add driver icon - larger and more visible
+        const icon = this.add.text(x, y, '🚗', { fontSize: '16px' });
         icon.setOrigin(0.5);
         driver.setData('icon', icon);
         
