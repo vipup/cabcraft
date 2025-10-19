@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Simulator - Ride Sharing Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1a1a1a;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        #ui-panel {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 140px;
+            background: linear-gradient(180deg, #1f2a35, #131a21);
+            color: white;
+            display: grid;
+            grid-template-columns: 280px 1fr 420px;
+            gap: 12px;
+            padding: 10px 12px;
+            box-shadow: 0 -2px 14px rgba(0,0,0,0.6);
+            z-index: 1000;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 140px; /* leave space for UI panel */
+            background: #2c3e50;
+        }
+        
+        .ui-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .unit-button {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .unit-button:hover {
+            background: linear-gradient(135deg, #2980b9, #1f4e79);
+            transform: translateY(-2px);
+        }
+        
+        .unit-button:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .resource-display {
+            background: rgba(0,0,0,0.3);
+            padding: 5px 10px;
+            border-radius: 3px;
+            margin: 0 5px;
+        }
+        
+        .selected-info {
+            background: rgba(52, 152, 219, 0.2);
+            padding: 5px 10px;
+            border-radius: 3px;
+            border: 1px solid #3498db;
+        }
+        
+        #instructions { display: none; }
+        
+        /* Mini Map (MapView) */
+        #mapview {
+            width: 260px;
+            background: rgba(0,0,0,0.45);
+            color: #ecf0f1;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+        #mapview h3 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #ecf0f1;
+        }
+        #minimap-canvas {
+            width: 240px;
+            height: 160px;
+            background: #1f2a35;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            display: block;
+        }
+        #map-stats {
+            margin-top: 8px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui-panel">
+            <!-- Left: Minimap like Warcraft -->
+            <div id="mapview">
+                <h3>Map</h3>
+                <canvas id="minimap-canvas" width="240" height="160"></canvas>
+                <div id="map-stats">
+                    <div>Time: <span id="map-time">0:00</span></div>
+                    <div>Agents: <span id="map-agents">0</span></div>
+                    <div>Avg Ride: <span id="map-avg">0s</span></div>
+                </div>
+            </div>
+            
+            <!-- Middle: Resources / Title -->
+            <div class="ui-section" style="align-items:flex-start;">
+                <h2 style="margin: 0 0 8px 0; color: #ecf0f1;">🚗 Traffic Simulator</h2>
+                <div class="resource-display">
+                    <span>💰 Earnings: <span id="earnings">0</span></span>
+                </div>
+                <div class="resource-display">
+                    <span>📊 Rating: <span id="rating">5.0</span></span>
+                </div>
+                <div class="resource-display">
+                    <span>🚗 Active Rides: <span id="active-rides">0</span></span>
+                </div>
+            </div>
+            
+            <!-- Right: Commands / Selection -->
+            <div class="ui-section" style="justify-content:flex-end; gap:10px;">
+                <button class="unit-button" id="spawn-rider">🏍️ Spawn Rider</button>
+                <button class="unit-button" id="spawn-driver">🚗 Spawn Driver</button>
+                <button class="unit-button" id="request-ride">📱 Request Ride</button>
+                <div class="selected-info" id="selected-info">No units selected</div>
+            </div>
+        </div>
+        
+        <div id="instructions">
+            <strong>How to Play:</strong><br>
+            • Spawn riders and drivers<br>
+            • Click "Request Ride" to create ride requests<br>
+            • Drivers compete to reach riders first<br>
+            • Complete rides to earn money and rating<br>
+            • Manage your fleet efficiently!
+        </div>
+        
+        
+        
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,751 @@
+// Traffic Simulator - Ride Sharing Game
+// A simulation where riders request rides and drivers compete to complete them
+
+class TrafficSimulator extends Phaser.Scene {
+    constructor() {
+        super({ key: 'TrafficSimulator' });
+        
+        // Game state
+        this.earnings = 0;
+        this.rating = 5.0;
+        this.activeRides = 0;
+        this.riders = [];
+        this.drivers = [];
+        this.rideRequests = [];
+        this.completedRides = 0;
+        
+        // Game settings
+        this.unitTypes = {
+            rider: { 
+                color: 0x00ff00, 
+                size: 15,
+                speed: 0, // Riders don't move
+                type: 'rider'
+            },
+            driver: { 
+                color: 0x0066ff, 
+                size: 20,
+                speed: 100,
+                type: 'driver',
+                status: 'idle' // idle, going_to_rider, on_ride
+            }
+        };
+        
+        // Ride settings
+        this.rideSettings = {
+            baseFare: 10,
+            distanceMultiplier: 0.5,
+            ratingBonus: 0.1
+        };
+    }
+    
+    preload() {
+        console.log('Traffic Simulator loading...');
+    }
+    
+    create() {
+        const { width, height } = this.cameras.main;
+        
+        // Define a larger world so we can scroll the camera
+        this.worldWidth = 2400;
+        this.worldHeight = 1600;
+        this.cameras.main.setBounds(0, 0, this.worldWidth, this.worldHeight);
+        this.cameras.main.setZoom(1);
+        
+        // Create city background
+        this.createCityBackground();
+        
+        // Set up input handlers
+        this.setupInputHandlers();
+        
+        // Set up UI handlers
+        this.setupUIHandlers();
+        
+        // Update UI
+        this.updateUI();
+        
+        // Mini map setup (scale to world, not viewport)
+        const miniCanvas = document.getElementById('minimap-canvas');
+        this.minimapCtx = miniCanvas.getContext('2d');
+        this.minimapScaleX = 240 / this.worldWidth;
+        this.minimapScaleY = 160 / this.worldHeight;
+        this.simStartMs = Date.now();
+        this.rideDurationsMs = [];
+
+        // Click-to-pan on minimap
+        miniCanvas.addEventListener('click', (e) => {
+            const rect = miniCanvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const worldX = mx / this.minimapScaleX;
+            const worldY = my / this.minimapScaleY;
+            this.centerCameraOn(worldX, worldY);
+        });
+        
+        // Start ride request timer
+        this.time.addEvent({
+            delay: 5000, // Every 5 seconds
+            callback: this.spawnRandomRideRequest,
+            callbackScope: this,
+            loop: true
+        });
+        
+        console.log('Traffic Simulator initialized!');
+    }
+    
+    createCityBackground() {
+        const width = this.worldWidth;
+        const height = this.worldHeight;
+
+        // City background
+        const graphics = this.add.graphics();
+        graphics.fillStyle(0x22313f, 1);
+        graphics.fillRect(0, 0, width, height);
+
+        // Thicker, clearly visible roads
+        this.roadWidth = 28;
+        const roadColor = 0x314a5a; // visible contrast
+        graphics.fillStyle(roadColor, 1);
+
+        // Road grid positions
+        this.roadY = [];
+        this.roadX = [];
+        for (let y = 120; y < height - 120; y += 100) {
+            this.roadY.push(y);
+            graphics.fillRect(0, y - this.roadWidth / 2, width, this.roadWidth);
+        }
+        for (let x = 120; x < width - 120; x += 140) {
+            this.roadX.push(x);
+            graphics.fillRect(x - this.roadWidth / 2, 0, this.roadWidth, height);
+        }
+
+        // Simple lane markers (dotted)
+        graphics.fillStyle(0xffffff, 0.15);
+        const dash = 12;
+        this.roadY.forEach(y => {
+            for (let dx = 0; dx < width; dx += dash * 2) {
+                graphics.fillRect(dx, y - 1, dash, 2);
+            }
+        });
+        this.roadX.forEach(x => {
+            for (let dy = 0; dy < height; dy += dash * 2) {
+                graphics.fillRect(x - 1, dy, 2, dash);
+            }
+        });
+
+        // Buildings between roads
+        this.createBuildingsGrid(width, height, graphics);
+
+        // Landmarks (named POIs)
+        this.createLandmarks();
+    }
+
+    createBuildingsGrid(width, height, graphics) {
+        const blockColor = 0x7f8c8d;
+        const borderColor = 0x5d6d7e;
+        const xs = [0, ...this.roadX, width];
+        const ys = [0, ...this.roadY, height];
+        this.buildings = [];
+
+        // For each block (between two roads), place a few building rectangles
+        for (let i = 0; i < ys.length - 1; i++) {
+            for (let j = 0; j < xs.length - 1; j++) {
+                // Compute block inner area excluding half road widths
+                const x0 = j === 0 ? 0 : xs[j] + this.roadWidth / 2;
+                const x1 = j === xs.length - 2 ? width : xs[j + 1] - this.roadWidth / 2;
+                const y0 = i === 0 ? 0 : ys[i] + this.roadWidth / 2;
+                const y1 = i === ys.length - 2 ? height : ys[i + 1] - this.roadWidth / 2;
+                const blockW = x1 - x0;
+                const blockH = y1 - y0;
+                if (blockW < 60 || blockH < 60) continue;
+
+                // Create 2–3 buildings inside the block
+                const cols = 2;
+                const rows = 2;
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const pad = 8;
+                        const bw = blockW / cols - pad * 2;
+                        const bh = blockH / rows - pad * 2;
+                        const bx = x0 + c * (blockW / cols) + pad + Math.random() * 6;
+                        const by = y0 + r * (blockH / rows) + pad + Math.random() * 6;
+                        graphics.fillStyle(blockColor, 1);
+                        graphics.fillRect(bx, by, bw, bh);
+                        graphics.lineStyle(1, borderColor, 1);
+                        graphics.strokeRect(bx, by, bw, bh);
+                        this.buildings.push({ x: bx, y: by, w: bw, h: bh });
+                    }
+                }
+            }
+        }
+    }
+    
+    createLandmarks() {
+        const width = this.worldWidth;
+        const height = this.worldHeight;
+        
+        // Create landmarks (pickup/dropoff points)
+        const landmarks = [
+            { x: 150, y: 150, name: 'Downtown', type: 'pickup' },
+            { x: 300, y: 200, name: 'Airport', type: 'pickup' },
+            { x: 500, y: 100, name: 'Mall', type: 'pickup' },
+            { x: 700, y: 250, name: 'Station', type: 'pickup' },
+            { x: 200, y: 400, name: 'Hospital', type: 'pickup' },
+            { x: 450, y: 450, name: 'University', type: 'pickup' }
+        ];
+        
+        landmarks.forEach(landmark => {
+            const marker = this.add.circle(landmark.x, landmark.y, 8, 0xff6b6b);
+            marker.setStrokeStyle(2, 0xffffff);
+            marker.setData('landmark', landmark);
+            
+            // Add label
+            const label = this.add.text(landmark.x, landmark.y + 15, landmark.name, {
+                fontSize: '10px',
+                fill: '#ffffff',
+                align: 'center'
+            });
+            label.setOrigin(0.5);
+        });
+    }
+    
+    setupInputHandlers() {
+        // Click to spawn riders/drivers at clicked location
+        this.input.on('pointerdown', (pointer) => {
+            if (pointer.leftButtonDown()) {
+                this.handleLeftClick(pointer);
+            }
+        });
+    }
+    
+    handleLeftClick(pointer) {
+        const worldX = pointer.worldX;
+        const worldY = pointer.worldY;
+        
+        // Check if clicking on a landmark
+        const landmark = this.getLandmarkAt(worldX, worldY);
+        if (landmark) {
+            console.log(`Clicked on landmark: ${landmark.name}`);
+        }
+    }
+    
+    getLandmarkAt(x, y) {
+        const graphics = this.children.list;
+        for (let child of graphics) {
+            if (child.getData('landmark')) {
+                const distance = Phaser.Math.Distance.Between(x, y, child.x, child.y);
+                if (distance < 20) {
+                    return child.getData('landmark');
+                }
+            }
+        }
+        return null;
+    }
+    
+    setupUIHandlers() {
+        // Spawn rider button
+        document.getElementById('spawn-rider').addEventListener('click', () => {
+            this.spawnRider();
+        });
+        
+        // Spawn driver button
+        document.getElementById('spawn-driver').addEventListener('click', () => {
+            this.spawnDriver();
+        });
+        
+        // Request ride button
+        document.getElementById('request-ride').addEventListener('click', () => {
+            this.createRideRequest();
+        });
+    }
+    
+    spawnRider() {
+        const x = Phaser.Math.Between(50, this.worldWidth - 50);
+        const y = Phaser.Math.Between(50, this.worldHeight - 50);
+        
+        const rider = this.createRider(x, y);
+        this.riders.push(rider);
+        
+        console.log(`Spawned rider at (${x}, ${y})`);
+    }
+    
+    spawnDriver() {
+        const x = Phaser.Math.Between(50, this.worldWidth - 50);
+        const y = Phaser.Math.Between(50, this.worldHeight - 50);
+        
+        const driver = this.createDriver(x, y);
+        this.drivers.push(driver);
+        
+        console.log(`Spawned driver at (${x}, ${y})`);
+    }
+    
+    createRider(x, y) {
+        const riderData = this.unitTypes.rider;
+        
+        const rider = this.add.rectangle(x, y, riderData.size, riderData.size, riderData.color);
+        rider.setStrokeStyle(2, 0xffffff);
+        rider.setData('type', 'rider');
+        rider.setData('status', 'waiting'); // waiting, in_ride, completed
+        rider.setData('currentRide', null);
+        
+        // Add rider icon
+        const icon = this.add.text(x, y, '👤', { fontSize: '12px' });
+        icon.setOrigin(0.5);
+        rider.setData('icon', icon);
+        
+        return rider;
+    }
+    
+    createDriver(x, y) {
+        const driverData = this.unitTypes.driver;
+        
+        const driver = this.add.rectangle(x, y, driverData.size, driverData.size, driverData.color);
+        driver.setStrokeStyle(2, 0xffffff);
+        driver.setData('type', 'driver');
+        driver.setData('status', 'idle'); // idle, going_to_rider, on_ride
+        driver.setData('currentRide', null);
+        driver.setData('target', null);
+        driver.setData('speed', driverData.speed); // FIX: Set the speed data!
+        
+        // Add driver icon
+        const icon = this.add.text(x, y, '🚗', { fontSize: '12px' });
+        icon.setOrigin(0.5);
+        driver.setData('icon', icon);
+        
+        return driver;
+    }
+    
+    createRideRequest() {
+        if (this.riders.length === 0) {
+            alert('Spawn some riders first!');
+            return;
+        }
+        
+        // Find a waiting rider
+        const waitingRiders = this.riders.filter(rider => rider.getData('status') === 'waiting');
+        if (waitingRiders.length === 0) {
+            alert('All riders are busy!');
+            return;
+        }
+        
+        const rider = Phaser.Utils.Array.GetRandom(waitingRiders);
+        const pickupX = rider.x;
+        const pickupY = rider.y;
+        
+        // Generate random destination
+        const dropoffX = Phaser.Math.Between(50, this.worldWidth - 50);
+        const dropoffY = Phaser.Math.Between(50, this.worldHeight - 50);
+        
+        // Calculate fare based on distance
+        const distance = Phaser.Math.Distance.Between(pickupX, pickupY, dropoffX, dropoffY);
+        const fare = Math.round(this.rideSettings.baseFare + (distance * this.rideSettings.distanceMultiplier));
+        
+        const rideRequest = {
+            id: Date.now(),
+            rider: rider,
+            pickupX: pickupX,
+            pickupY: pickupY,
+            dropoffX: dropoffX,
+            dropoffY: dropoffY,
+            fare: fare,
+            status: 'requested', // requested, assigned, in_progress, completed
+            assignedDriver: null,
+            startTime: Date.now()
+        };
+        
+        this.rideRequests.push(rideRequest);
+        rider.setData('currentRide', rideRequest);
+        rider.setData('status', 'requested');
+        
+        // Visual indicator for ride request
+        this.createRideRequestIndicator(rideRequest);
+        
+        // Notify drivers
+        this.notifyDriversOfRideRequest(rideRequest);
+        
+        this.activeRides++;
+        this.updateUI();
+        
+        console.log(`Created ride request: ${fare} fare, distance: ${Math.round(distance)}`);
+    }
+    
+    createRideRequestIndicator(rideRequest) {
+        // Create pickup marker
+        const pickupMarker = this.add.circle(rideRequest.pickupX, rideRequest.pickupY, 12, 0xffd700);
+        pickupMarker.setStrokeStyle(3, 0xff6b6b);
+        pickupMarker.setData('rideRequest', rideRequest);
+        pickupMarker.setData('type', 'pickup');
+        
+        // Create dropoff marker
+        const dropoffMarker = this.add.circle(rideRequest.dropoffX, rideRequest.dropoffY, 10, 0x00ff00);
+        dropoffMarker.setStrokeStyle(2, 0xffffff);
+        dropoffMarker.setData('rideRequest', rideRequest);
+        dropoffMarker.setData('type', 'dropoff');
+        
+        // Add fare text
+        const fareText = this.add.text(rideRequest.pickupX, rideRequest.pickupY - 20, `$${rideRequest.fare}`, {
+            fontSize: '12px',
+            fill: '#ffffff',
+            backgroundColor: '#000000',
+            padding: { x: 4, y: 2 }
+        });
+        fareText.setOrigin(0.5);
+        
+        rideRequest.pickupMarker = pickupMarker;
+        rideRequest.dropoffMarker = dropoffMarker;
+        rideRequest.fareText = fareText;
+    }
+    
+    notifyDriversOfRideRequest(rideRequest) {
+        // Find available drivers
+        const availableDrivers = this.drivers.filter(driver => driver.getData('status') === 'idle');
+        
+        if (availableDrivers.length === 0) {
+            console.log('No available drivers for ride request');
+            return;
+        }
+        
+        // Calculate distances and assign closest driver
+        let closestDriver = null;
+        let closestDistance = Infinity;
+        
+        availableDrivers.forEach(driver => {
+            const distance = Phaser.Math.Distance.Between(
+                driver.x, driver.y, 
+                rideRequest.pickupX, rideRequest.pickupY
+            );
+            
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestDriver = driver;
+            }
+        });
+        
+        if (closestDriver) {
+            this.assignRideToDriver(rideRequest, closestDriver);
+        }
+    }
+    
+    assignRideToDriver(rideRequest, driver) {
+        rideRequest.assignedDriver = driver;
+        rideRequest.status = 'assigned';
+        
+        driver.setData('currentRide', rideRequest);
+        driver.setData('status', 'going_to_rider');
+        driver.setData('target', { x: rideRequest.pickupX, y: rideRequest.pickupY });
+        
+        // Move driver to pickup location
+        this.moveDriverToPickup(driver, rideRequest);
+        
+        console.log(`Assigned ride to driver, fare: $${rideRequest.fare}`);
+    }
+    
+    moveDriverToPickup(driver, rideRequest) {
+        const distance = Phaser.Math.Distance.Between(
+            driver.x, driver.y, 
+            rideRequest.pickupX, rideRequest.pickupY
+        );
+        
+        const speed = driver.getData('speed');
+        const duration = (distance / speed) * 1000; // Convert to milliseconds
+        
+        console.log(`Driver moving to pickup: distance=${Math.round(distance)}, speed=${speed}, duration=${Math.round(duration)}ms`);
+        
+        this.tweens.add({
+            targets: driver,
+            x: rideRequest.pickupX,
+            y: rideRequest.pickupY,
+            duration: duration,
+            ease: 'Power2',
+            onComplete: () => {
+                console.log('Driver reached pickup location!');
+                this.pickupRider(driver, rideRequest);
+            }
+        });
+        
+        // Also move the icon
+        this.tweens.add({
+            targets: driver.getData('icon'),
+            x: rideRequest.pickupX,
+            y: rideRequest.pickupY,
+            duration: duration,
+            ease: 'Power2'
+        });
+    }
+    
+    pickupRider(driver, rideRequest) {
+        console.log('Driver picked up rider!');
+        
+        // Update statuses
+        driver.setData('status', 'on_ride');
+        rideRequest.rider.setData('status', 'in_ride');
+        rideRequest.status = 'in_progress';
+        
+        // Move both driver and rider to dropoff
+        this.moveToDropoff(driver, rideRequest);
+    }
+    
+    moveToDropoff(driver, rideRequest) {
+        const distance = Phaser.Math.Distance.Between(
+            rideRequest.pickupX, rideRequest.pickupY,
+            rideRequest.dropoffX, rideRequest.dropoffY
+        );
+        
+        const speed = driver.getData('speed');
+        const duration = (distance / speed) * 1000;
+        
+        console.log(`Moving to dropoff: distance=${Math.round(distance)}, speed=${speed}, duration=${Math.round(duration)}ms`);
+        
+        // Move driver
+        this.tweens.add({
+            targets: driver,
+            x: rideRequest.dropoffX,
+            y: rideRequest.dropoffY,
+            duration: duration,
+            ease: 'Power2',
+            onComplete: () => {
+                console.log('Driver reached dropoff location!');
+                this.completeRide(driver, rideRequest);
+            }
+        });
+        
+        // Move rider
+        this.tweens.add({
+            targets: rideRequest.rider,
+            x: rideRequest.dropoffX,
+            y: rideRequest.dropoffY,
+            duration: duration,
+            ease: 'Power2'
+        });
+        
+        // Move icons
+        this.tweens.add({
+            targets: driver.getData('icon'),
+            x: rideRequest.dropoffX,
+            y: rideRequest.dropoffY,
+            duration: duration,
+            ease: 'Power2'
+        });
+        
+        this.tweens.add({
+            targets: rideRequest.rider.getData('icon'),
+            x: rideRequest.dropoffX,
+            y: rideRequest.dropoffY,
+            duration: duration,
+            ease: 'Power2'
+        });
+    }
+    
+    completeRide(driver, rideRequest) {
+        console.log(`Ride completed! Fare: $${rideRequest.fare}`);
+        
+        // Update earnings
+        this.earnings += rideRequest.fare;
+        this.completedRides++;
+        
+        // Update rating (simple system)
+        const rideTime = Date.now() - rideRequest.startTime;
+        const expectedTime = 10000; // 10 seconds expected
+        const timeBonus = Math.max(0, (expectedTime - rideTime) / expectedTime);
+        this.rating = Math.min(5.0, this.rating + (timeBonus * 0.1));
+        
+        // For stats
+        this.rideDurationsMs.push(rideTime);
+        
+        // Reset statuses
+        driver.setData('status', 'idle');
+        driver.setData('currentRide', null);
+        driver.setData('target', null);
+        
+        rideRequest.rider.setData('status', 'waiting');
+        rideRequest.rider.setData('currentRide', null);
+        
+        // Remove visual indicators
+        rideRequest.pickupMarker.destroy();
+        rideRequest.dropoffMarker.destroy();
+        rideRequest.fareText.destroy();
+        
+        // Remove from active rides
+        this.activeRides--;
+        
+        // Remove from ride requests
+        const index = this.rideRequests.indexOf(rideRequest);
+        if (index > -1) {
+            this.rideRequests.splice(index, 1);
+        }
+        
+        this.updateUI();
+        
+        // Show completion message
+        this.showCompletionMessage(rideRequest.fare);
+    }
+    
+    showCompletionMessage(fare) {
+        const message = this.add.text(400, 300, `Ride Completed!\n+$${fare}`, {
+            fontSize: '24px',
+            fill: '#00ff00',
+            backgroundColor: '#000000',
+            padding: { x: 10, y: 5 },
+            align: 'center'
+        });
+        message.setOrigin(0.5);
+        
+        // Fade out after 2 seconds
+        this.tweens.add({
+            targets: message,
+            alpha: 0,
+            duration: 2000,
+            onComplete: () => {
+                message.destroy();
+            }
+        });
+    }
+    
+    spawnRandomRideRequest() {
+        // Auto-spawn ride requests occasionally
+        if (Math.random() < 0.3 && this.riders.length > 0) { // 30% chance
+            this.createRideRequest();
+        }
+    }
+    
+    updateUI() {
+        document.getElementById('earnings').textContent = this.earnings;
+        document.getElementById('rating').textContent = this.rating.toFixed(1);
+        document.getElementById('active-rides').textContent = this.activeRides;
+    }
+    
+    update() {
+        // Update driver AI and ride status
+        this.updateDriverAI();
+        
+        // Render minimap each frame
+        this.renderMiniMap();
+    }
+    
+    updateDriverAI() {
+        // Update driver status indicators
+        this.drivers.forEach(driver => {
+            const status = driver.getData('status');
+            const icon = driver.getData('icon');
+            
+            // Update icon based on status
+            if (status === 'idle') {
+                icon.setText('🚗');
+            } else if (status === 'going_to_rider') {
+                icon.setText('🚗➡️');
+            } else if (status === 'on_ride') {
+                icon.setText('🚗👤');
+            }
+        });
+    }
+
+    renderMiniMap() {
+        if (!this.minimapCtx) return;
+        const ctx = this.minimapCtx;
+
+        // Clear
+        ctx.clearRect(0, 0, 240, 160);
+        ctx.fillStyle = '#1f2a35';
+        ctx.fillRect(0, 0, 240, 160);
+
+        // Draw roads (scaled)
+        ctx.strokeStyle = '#566573';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let y = 120; y < this.worldHeight - 120; y += 100) {
+            const sy = y * this.minimapScaleY;
+            ctx.moveTo(0, sy);
+            ctx.lineTo(240, sy);
+        }
+        for (let x = 120; x < this.worldWidth - 120; x += 140) {
+            const sx = x * this.minimapScaleX;
+            ctx.moveTo(sx, 0);
+            ctx.lineTo(sx, 160);
+        }
+        ctx.stroke();
+
+        // Buildings (as dim rectangles)
+        if (this.buildings) {
+            ctx.fillStyle = 'rgba(127,140,141,0.5)';
+            this.buildings.forEach(b => {
+                const x = b.x * this.minimapScaleX;
+                const y = b.y * this.minimapScaleY;
+                const w = b.w * this.minimapScaleX;
+                const h = b.h * this.minimapScaleY;
+                ctx.fillRect(x, y, w, h);
+            });
+        }
+
+        // Riders
+        this.riders.forEach(r => {
+            const x = r.x * this.minimapScaleX;
+            const y = r.y * this.minimapScaleY;
+            ctx.fillStyle = '#2ecc71';
+            ctx.fillRect(x - 2, y - 2, 4, 4);
+        });
+
+        // Drivers
+        this.drivers.forEach(d => {
+            const x = d.x * this.minimapScaleX;
+            const y = d.y * this.minimapScaleY;
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(x - 2, y - 2, 4, 4);
+        });
+
+        // Ride markers
+        this.rideRequests.forEach(req => {
+            ctx.strokeStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(req.pickupX * this.minimapScaleX, req.pickupY * this.minimapScaleY, 4, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = '#2ecc71';
+            ctx.beginPath();
+            ctx.arc(req.dropoffX * this.minimapScaleX, req.dropoffY * this.minimapScaleY, 3, 0, Math.PI * 2);
+            ctx.stroke();
+        });
+
+        // Stats
+        const elapsed = Math.floor((Date.now() - this.simStartMs) / 1000);
+        const mm = String(Math.floor(elapsed / 60));
+        const ss = String(elapsed % 60).padStart(2, '0');
+        document.getElementById('map-time').textContent = `${mm}:${ss}`;
+        const agents = this.riders.length + this.drivers.length;
+        document.getElementById('map-agents').textContent = String(agents);
+        const avgMs = this.rideDurationsMs.length ? Math.round(this.rideDurationsMs.reduce((a,b)=>a+b,0) / this.rideDurationsMs.length) : 0;
+        document.getElementById('map-avg').textContent = `${Math.round(avgMs/1000)}s`;
+    }
+
+    centerCameraOn(worldX, worldY) {
+        const cam = this.cameras.main;
+        const halfW = cam.width / 2;
+        const halfH = cam.height / 2;
+        const targetX = Phaser.Math.Clamp(worldX - halfW, 0, this.worldWidth - cam.width);
+        const targetY = Phaser.Math.Clamp(worldY - halfH, 0, this.worldHeight - cam.height);
+        cam.pan(worldX, worldY, 250, 'Sine.easeInOut');
+    }
+}
+
+// Game configuration
+const config = {
+    type: Phaser.AUTO,
+    width: window.innerWidth,
+    height: window.innerHeight - 140, // leave space for bottom UI like Warcraft
+    parent: 'game-canvas',
+    backgroundColor: '#2c3e50',
+    scene: TrafficSimulator,
+    physics: {
+        default: 'arcade',
+        arcade: {
+            gravity: { y: 0 },
+            debug: false
+        }
+    }
+};
+
+// Start the game
+const game = new Phaser.Game(config);
+
+// Handle window resize
+window.addEventListener('resize', () => {
+    game.scale.resize(window.innerWidth, window.innerHeight - 140);
+});

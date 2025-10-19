@@ -1,0 +1,16 @@
+{
+  "name": "traffic-wars",
+  "version": "1.0.0",
+  "description": "A Warcraft-style RTS game with riders vs drivers in a city battlefield",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "start": "python3 -m http.server 8000"
+  },
+  "keywords": ["rts", "game", "phaser", "traffic", "warcraft"],
+  "author": "Traffic Wars Team",
+  "license": "MIT",
+  "dependencies": {
+    "phaser": "^3.70.0"
+  }
+}
