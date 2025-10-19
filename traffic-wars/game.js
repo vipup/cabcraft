@@ -1174,6 +1174,10 @@ const config = {
     parent: 'game-canvas',
     backgroundColor: '#2c3e50',
     scene: TrafficSimulator,
+    scale: {
+        mode: Phaser.Scale.RESIZE,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    },
     physics: {
         default: 'arcade',
         arcade: {
@@ -1189,4 +1193,18 @@ const game = new Phaser.Game(config);
 // Handle window resize
 window.addEventListener('resize', () => {
     game.scale.resize(window.innerWidth, window.innerHeight - 140);
+});
+
+// Force canvas to take full size
+window.addEventListener('load', () => {
+    const canvas = document.getElementById('game-canvas');
+    if (canvas) {
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.right = '0';
+        canvas.style.bottom = '140px';
+    }
 });
