@@ -528,7 +528,7 @@ class TrafficSimulatorSVG {
 
     createRideRequest() {
         if (this.riders.length === 0) {
-            alert('No riders available! Spawn some riders first.');
+            console.log('No riders available - spawn some riders first');
             return;
         }
         
@@ -536,7 +536,7 @@ class TrafficSimulatorSVG {
         const idleRiders = this.riders.filter(rider => rider.status === 'idle');
         
         if (idleRiders.length === 0) {
-            alert('All riders are busy!');
+            console.log('All riders are busy - no ride request created');
             return;
         }
         
