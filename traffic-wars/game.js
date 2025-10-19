@@ -123,12 +123,14 @@ class TrafficSimulator extends Phaser.Scene {
         // Road grid positions
         this.roadY = [];
         this.roadX = [];
+        this.roadObjects = []; // Store road objects for viewport culling
         
         // Horizontal roads
         for (let y = 120; y < height - 120; y += 100) {
             this.roadY.push(y);
             const road = this.add.rectangle(width/2, y, width, this.roadWidth, roadColor);
             road.setOrigin(0.5, 0.5);
+            this.roadObjects.push(road);
         }
         
         // Vertical roads
@@ -136,6 +138,7 @@ class TrafficSimulator extends Phaser.Scene {
             this.roadX.push(x);
             const road = this.add.rectangle(x, height/2, this.roadWidth, height, roadColor);
             road.setOrigin(0.5, 0.5);
+            this.roadObjects.push(road);
         }
         console.log(`Created ${this.roadY.length} horizontal roads and ${this.roadX.length} vertical roads`);
 
@@ -165,6 +168,7 @@ class TrafficSimulator extends Phaser.Scene {
         const xs = [0, ...this.roadX, width];
         const ys = [0, ...this.roadY, height];
         this.buildings = [];
+        this.buildingObjects = []; // Store building objects for viewport culling
 
         // For each block (between two roads), place a few building rectangles
         for (let i = 0; i < ys.length - 1; i++) {
@@ -193,6 +197,7 @@ class TrafficSimulator extends Phaser.Scene {
                         const building = this.add.rectangle(bx + bw/2, by + bh/2, bw, bh, blockColor);
                         building.setStrokeStyle(1, borderColor);
                         this.buildings.push({ x: bx, y: by, w: bw, h: bh });
+                        this.buildingObjects.push(building);
                     }
                 }
             }
@@ -213,6 +218,7 @@ class TrafficSimulator extends Phaser.Scene {
             { x: 450, y: 450, name: 'University', type: 'pickup' }
         ];
         
+        this.landmarkObjects = []; // Store landmark objects for viewport culling
         landmarks.forEach(landmark => {
             const marker = this.add.circle(landmark.x, landmark.y, 12, 0xff6b6b);
             marker.setStrokeStyle(3, 0xffffff);
@@ -227,6 +233,8 @@ class TrafficSimulator extends Phaser.Scene {
                 align: 'center'
             });
             label.setOrigin(0.5);
+            
+            this.landmarkObjects.push({ marker, label });
         });
     }
     
@@ -675,10 +683,86 @@ class TrafficSimulator extends Phaser.Scene {
         // Update driver AI and ride status
         this.updateDriverAI();
         
+        // Update object visibility based on camera viewport
+        this.updateObjectVisibility();
+        
         // Render minimap each frame
         this.renderMiniMap();
     }
     
+    updateObjectVisibility() {
+        const cam = this.cameras.main;
+        const viewportLeft = cam.x;
+        const viewportTop = cam.y;
+        const viewportRight = cam.x + cam.width;
+        const viewportBottom = cam.y + cam.height;
+        
+        // Update driver visibility
+        this.drivers.forEach(driver => {
+            const isVisible = driver.x >= viewportLeft && driver.x <= viewportRight &&
+                             driver.y >= viewportTop && driver.y <= viewportBottom;
+            driver.setVisible(isVisible);
+            if (driver.getData('icon')) {
+                driver.getData('icon').setVisible(isVisible);
+            }
+        });
+        
+        // Update rider visibility
+        this.riders.forEach(rider => {
+            const isVisible = rider.x >= viewportLeft && rider.x <= viewportRight &&
+                             rider.y >= viewportTop && rider.y <= viewportBottom;
+            rider.setVisible(isVisible);
+            if (rider.getData('icon')) {
+                rider.getData('icon').setVisible(isVisible);
+            }
+        });
+        
+        // Update ride request markers visibility
+        this.rideRequests.forEach(rideRequest => {
+            if (rideRequest.pickupMarker) {
+                const pickupVisible = rideRequest.pickupX >= viewportLeft && rideRequest.pickupX <= viewportRight &&
+                                    rideRequest.pickupY >= viewportTop && rideRequest.pickupY <= viewportBottom;
+                rideRequest.pickupMarker.setVisible(pickupVisible);
+                if (rideRequest.fareText) {
+                    rideRequest.fareText.setVisible(pickupVisible);
+                }
+            }
+            
+            if (rideRequest.dropoffMarker) {
+                const dropoffVisible = rideRequest.dropoffX >= viewportLeft && rideRequest.dropoffX <= viewportRight &&
+                                     rideRequest.dropoffY >= viewportTop && rideRequest.dropoffY <= viewportBottom;
+                rideRequest.dropoffMarker.setVisible(dropoffVisible);
+            }
+        });
+        
+        // Update landmark visibility
+        if (this.landmarkObjects) {
+            this.landmarkObjects.forEach(landmarkObj => {
+                const isVisible = landmarkObj.marker.x >= viewportLeft && landmarkObj.marker.x <= viewportRight &&
+                                 landmarkObj.marker.y >= viewportTop && landmarkObj.marker.y <= viewportBottom;
+                landmarkObj.marker.setVisible(isVisible);
+                landmarkObj.label.setVisible(isVisible);
+            });
+        }
+        
+        // Update building visibility (buildings are large, so use intersection check)
+        if (this.buildingObjects) {
+            this.buildingObjects.forEach(building => {
+                const buildingLeft = building.x - building.width / 2;
+                const buildingRight = building.x + building.width / 2;
+                const buildingTop = building.y - building.height / 2;
+                const buildingBottom = building.y + building.height / 2;
+                
+                const isVisible = !(buildingRight < viewportLeft || buildingLeft > viewportRight ||
+                                  buildingBottom < viewportTop || buildingTop > viewportBottom);
+                building.setVisible(isVisible);
+            });
+        }
+        
+        // Roads are always visible (they span the entire world)
+        // But we could add road segment visibility if needed
+    }
+
     updateDriverAI() {
         // Update driver status indicators
         this.drivers.forEach(driver => {
@@ -761,6 +845,9 @@ class TrafficSimulator extends Phaser.Scene {
             ctx.stroke();
         });
 
+        // Draw viewport indicator (red square showing current camera view)
+        this.drawViewportIndicator(ctx);
+
         // Stats
         const elapsed = Math.floor((Date.now() - this.simStartMs) / 1000);
         const mm = String(Math.floor(elapsed / 60));
@@ -770,6 +857,33 @@ class TrafficSimulator extends Phaser.Scene {
         document.getElementById('map-agents').textContent = String(agents);
         const avgMs = this.rideDurationsMs.length ? Math.round(this.rideDurationsMs.reduce((a,b)=>a+b,0) / this.rideDurationsMs.length) : 0;
         document.getElementById('map-avg').textContent = `${Math.round(avgMs/1000)}s`;
+    }
+
+    drawViewportIndicator(ctx) {
+        const cam = this.cameras.main;
+        
+        // Calculate viewport bounds in world coordinates
+        const viewportLeft = cam.x;
+        const viewportTop = cam.y;
+        const viewportRight = cam.x + cam.width;
+        const viewportBottom = cam.y + cam.height;
+        
+        // Convert to mini-map coordinates
+        const miniLeft = viewportLeft * this.minimapScaleX;
+        const miniTop = viewportTop * this.minimapScaleY;
+        const miniRight = viewportRight * this.minimapScaleX;
+        const miniBottom = viewportBottom * this.minimapScaleY;
+        
+        // Draw red square outline for viewport
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(miniLeft, miniTop, miniRight - miniLeft, miniBottom - miniTop);
+        
+        // Add semi-transparent red fill
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+        ctx.fillRect(miniLeft, miniTop, miniRight - miniLeft, miniBottom - miniTop);
+        
+        console.log(`Viewport indicator: world(${Math.round(viewportLeft)}, ${Math.round(viewportTop)}) -> mini(${Math.round(miniLeft)}, ${Math.round(miniTop)})`);
     }
 
     setupZoomControls() {
