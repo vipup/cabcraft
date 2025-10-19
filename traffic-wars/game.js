@@ -142,6 +142,10 @@ class TrafficSimulator extends Phaser.Scene {
         }
         console.log(`Created ${this.roadY.length} horizontal roads and ${this.roadX.length} vertical roads`);
 
+        // Create street names
+        this.createStreetNames();
+        console.log('Street names created');
+
         // Create buildings as separate rectangles
         this.createBuildingsGrid(width, height);
         console.log(`Created ${this.buildings.length} buildings`);
@@ -236,6 +240,98 @@ class TrafficSimulator extends Phaser.Scene {
             
             this.landmarkObjects.push({ marker, label });
         });
+    }
+    
+    createStreetNames() {
+        // Street name arrays
+        const streetNames = [
+            'Main St', 'Broadway', 'Oak Ave', 'Pine St', 'Elm St', 'Maple Ave',
+            'Cedar St', 'First St', 'Second St', 'Third St', 'Fourth St', 'Fifth St',
+            'Park Ave', 'Washington St', 'Lincoln Ave', 'Jefferson St', 'Madison Ave',
+            'Roosevelt St', 'Kennedy Ave', 'Church St', 'School St', 'Market St',
+            'Commerce St', 'Industrial Ave', 'Residential St', 'Garden Ave'
+        ];
+        
+        const avenueNames = [
+            'First Ave', 'Second Ave', 'Third Ave', 'Fourth Ave', 'Fifth Ave',
+            'Central Ave', 'North Ave', 'South Ave', 'East Ave', 'West Ave',
+            'Grand Ave', 'Royal Ave', 'Victory Ave', 'Liberty Ave', 'Freedom Ave',
+            'Peace Ave', 'Harmony Ave', 'Unity Ave', 'Progress Ave', 'Future Ave'
+        ];
+        
+        this.streetNameObjects = []; // Store street name objects for viewport culling
+        
+        // Add names to horizontal roads (streets)
+        this.roadY.forEach((y, index) => {
+            if (index < streetNames.length) {
+                const streetName = streetNames[index];
+                
+                // Add street name at the left edge of the road
+                const nameText = this.add.text(50, y, streetName, {
+                    fontSize: '14px',
+                    fill: '#ffffff',
+                    backgroundColor: '#000000',
+                    padding: { x: 6, y: 3 },
+                    align: 'center',
+                    fontStyle: 'bold'
+                });
+                nameText.setOrigin(0, 0.5);
+                nameText.setDepth(1000); // Ensure street names are on top
+                
+                this.streetNameObjects.push(nameText);
+                
+                // Also add street name at the right edge
+                const nameTextRight = this.add.text(this.worldWidth - 50, y, streetName, {
+                    fontSize: '14px',
+                    fill: '#ffffff',
+                    backgroundColor: '#000000',
+                    padding: { x: 6, y: 3 },
+                    align: 'center',
+                    fontStyle: 'bold'
+                });
+                nameTextRight.setOrigin(1, 0.5);
+                nameTextRight.setDepth(1000);
+                
+                this.streetNameObjects.push(nameTextRight);
+            }
+        });
+        
+        // Add names to vertical roads (avenues)
+        this.roadX.forEach((x, index) => {
+            if (index < avenueNames.length) {
+                const avenueName = avenueNames[index];
+                
+                // Add avenue name at the top of the road
+                const nameText = this.add.text(x, 50, avenueName, {
+                    fontSize: '14px',
+                    fill: '#ffffff',
+                    backgroundColor: '#000000',
+                    padding: { x: 6, y: 3 },
+                    align: 'center',
+                    fontStyle: 'bold'
+                });
+                nameText.setOrigin(0.5, 0);
+                nameText.setDepth(1000);
+                
+                this.streetNameObjects.push(nameText);
+                
+                // Also add avenue name at the bottom
+                const nameTextBottom = this.add.text(x, this.worldHeight - 50, avenueName, {
+                    fontSize: '14px',
+                    fill: '#ffffff',
+                    backgroundColor: '#000000',
+                    padding: { x: 6, y: 3 },
+                    align: 'center',
+                    fontStyle: 'bold'
+                });
+                nameTextBottom.setOrigin(0.5, 1);
+                nameTextBottom.setDepth(1000);
+                
+                this.streetNameObjects.push(nameTextBottom);
+            }
+        });
+        
+        console.log(`Created ${this.streetNameObjects.length} street name labels`);
     }
     
     setupInputHandlers() {
@@ -806,6 +902,15 @@ class TrafficSimulator extends Phaser.Scene {
             });
         }
         
+        // Update street name visibility
+        if (this.streetNameObjects) {
+            this.streetNameObjects.forEach(streetName => {
+                const isVisible = streetName.x >= paddedLeft && streetName.x <= paddedRight &&
+                                 streetName.y >= paddedTop && streetName.y <= paddedBottom;
+                streetName.setVisible(isVisible);
+            });
+        }
+        
         // Debug logging for viewport culling
         if (this.isDragging) {
             console.log(`Viewport culling: (${Math.round(viewportLeft)}, ${Math.round(viewportTop)}) to (${Math.round(viewportRight)}, ${Math.round(viewportBottom)})`);
@@ -894,6 +999,9 @@ class TrafficSimulator extends Phaser.Scene {
             ctx.stroke();
         });
 
+        // Draw street names on mini-map (smaller font)
+        this.drawMiniMapStreetNames(ctx);
+
         // Draw viewport indicator (red square showing current camera view)
         this.drawViewportIndicator(ctx);
 
@@ -933,6 +1041,67 @@ class TrafficSimulator extends Phaser.Scene {
         ctx.fillRect(miniLeft, miniTop, miniRight - miniLeft, miniBottom - miniTop);
         
         console.log(`Viewport indicator: world(${Math.round(viewportLeft)}, ${Math.round(viewportTop)}) -> mini(${Math.round(miniLeft)}, ${Math.round(miniTop)})`);
+    }
+
+    drawMiniMapStreetNames(ctx) {
+        // Street name arrays (same as in createStreetNames)
+        const streetNames = [
+            'Main St', 'Broadway', 'Oak Ave', 'Pine St', 'Elm St', 'Maple Ave',
+            'Cedar St', 'First St', 'Second St', 'Third St', 'Fourth St', 'Fifth St',
+            'Park Ave', 'Washington St', 'Lincoln Ave', 'Jefferson St', 'Madison Ave',
+            'Roosevelt St', 'Kennedy Ave', 'Church St', 'School St', 'Market St',
+            'Commerce St', 'Industrial Ave', 'Residential St', 'Garden Ave'
+        ];
+        
+        const avenueNames = [
+            'First Ave', 'Second Ave', 'Third Ave', 'Fourth Ave', 'Fifth Ave',
+            'Central Ave', 'North Ave', 'South Ave', 'East Ave', 'West Ave',
+            'Grand Ave', 'Royal Ave', 'Victory Ave', 'Liberty Ave', 'Freedom Ave',
+            'Peace Ave', 'Harmony Ave', 'Unity Ave', 'Progress Ave', 'Future Ave'
+        ];
+        
+        // Set font for mini-map street names
+        ctx.font = '8px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Draw street names on horizontal roads
+        this.roadY.forEach((y, index) => {
+            if (index < streetNames.length) {
+                const streetName = streetNames[index];
+                const miniY = y * this.minimapScaleY;
+                
+                // Draw street name at left edge
+                ctx.textAlign = 'left';
+                ctx.fillText(streetName, 5, miniY);
+                
+                // Draw street name at right edge
+                ctx.textAlign = 'right';
+                ctx.fillText(streetName, 235, miniY);
+            }
+        });
+        
+        // Draw avenue names on vertical roads
+        this.roadX.forEach((x, index) => {
+            if (index < avenueNames.length) {
+                const avenueName = avenueNames[index];
+                const miniX = x * this.minimapScaleX;
+                
+                // Draw avenue name at top
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.fillText(avenueName, miniX, 5);
+                
+                // Draw avenue name at bottom
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(avenueName, miniX, 155);
+            }
+        });
+        
+        // Reset text alignment
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
     }
 
     setupZoomControls() {
