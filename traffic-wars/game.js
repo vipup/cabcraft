@@ -877,47 +877,80 @@ class TrafficSimulator extends Phaser.Scene {
     }
 }
 
-// Game configuration
-const config = {
-    type: Phaser.AUTO,
-    width: window.innerWidth,
-    height: window.innerHeight - 140, // Leave space for bottom UI
-    parent: 'game-canvas',
-    backgroundColor: '#2c3e50',
-    scene: TrafficSimulator,
-    scale: {
-        mode: Phaser.Scale.RESIZE,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-    },
-    physics: {
-        default: 'arcade',
-        arcade: {
-            gravity: { y: 0 },
-            debug: false
+// Initialize game when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 DOM ready, initializing game...');
+    
+    // Game configuration
+    const config = {
+        type: Phaser.AUTO,
+        width: window.innerWidth,
+        height: window.innerHeight - 140, // Leave space for bottom UI
+        parent: 'game-canvas',
+        backgroundColor: '#2c3e50',
+        scene: TrafficSimulator,
+        scale: {
+            mode: Phaser.Scale.RESIZE,
+            autoCenter: Phaser.Scale.CENTER_BOTH,
+            width: window.innerWidth,
+            height: window.innerHeight - 140
+        },
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 0 },
+                debug: false
+            }
         }
-    }
-};
+    };
 
-// Create game instance
-const game = new Phaser.Game(config);
+    // Create game instance
+    const game = new Phaser.Game(config);
+    
+    // Make game globally accessible
+    window.game = game;
+    
+    // Force immediate canvas resize
+    setTimeout(() => {
+        const canvas = document.getElementById('game-canvas');
+        if (canvas && game) {
+            const newWidth = window.innerWidth;
+            const newHeight = window.innerHeight - 140;
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            game.scale.resize(newWidth, newHeight);
+            console.log(`🔧 Immediate canvas resize: ${newWidth}x${newHeight}`);
+        }
+    }, 100);
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        const newWidth = window.innerWidth;
+        const newHeight = window.innerHeight - 140;
+        game.scale.resize(newWidth, newHeight);
+        game.scale.setGameSize(newWidth, newHeight);
+    });
 
-// Handle window resize
-window.addEventListener('resize', () => {
-    game.scale.resize(window.innerWidth, window.innerHeight - 140);
+    // Force canvas styling on load
+    window.addEventListener('load', () => {
+        const canvas = document.getElementById('game-canvas');
+        if (canvas) {
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.style.position = 'absolute';
+            canvas.style.top = '0';
+            canvas.style.left = '0';
+            canvas.style.right = '0';
+            canvas.style.bottom = '140px';
+            
+            // Force canvas dimensions
+            const newWidth = window.innerWidth;
+            const newHeight = window.innerHeight - 140;
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            
+            console.log(`🔧 Canvas resized to: ${newWidth}x${newHeight}`);
+        }
+    });
+
+    console.log('🚗 Traffic Simulator - Game initialized!');
 });
-
-// Force canvas styling on load
-window.addEventListener('load', () => {
-    const canvas = document.getElementById('game-canvas');
-    if (canvas) {
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        canvas.style.position = 'absolute';
-        canvas.style.top = '0';
-        canvas.style.left = '0';
-        canvas.style.right = '0';
-        canvas.style.bottom = '140px';
-    }
-});
-
-console.log('🚗 Traffic Simulator - Game initialized!');
