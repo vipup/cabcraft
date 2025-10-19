@@ -75,18 +75,10 @@
 
         #minimap-svg {
             width: 100%;
-            height: 80px;
+            height: 100px;
             background: #2c3e50;
             border: 1px solid #34495e;
             border-radius: 4px;
-        }
-
-        #map-stats {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            font-size: 10px;
-            color: #bdc3c7;
         }
 
         .ui-section {
@@ -151,20 +143,33 @@
 <body>
     <div id="game-container">
         <div id="ui-panel">
-            <!-- Left: Minimap like Warcraft -->
+            <!-- Left: Pure Graphical Minimap -->
             <div id="mapview">
                 <h3>Map</h3>
                 <svg id="minimap-svg" viewBox="0 0 240 160"></svg>
-                <div id="map-stats">
-                    <div>Time: <span id="map-time">0:00</span></div>
-                    <div>Agents: <span id="map-agents">0</span></div>
-                    <div>Avg Ride: <span id="map-avg">0s</span></div>
-                    <div>Zoom: <span id="zoom-level">1.0x</span></div>
-                    <div>Camera: <span id="camera-pos">1200, 800</span></div>
+            </div>
+            
+            <!-- Second: Map Information Panel -->
+            <div class="ui-section" style="align-items:flex-start; min-width: 200px;">
+                <h3 style="margin: 0 0 8px 0; color: #3498db; font-size: 14px;">Map Info</h3>
+                <div class="resource-display">
+                    <span>Time: <span id="map-time">0:00</span></span>
+                </div>
+                <div class="resource-display">
+                    <span>Agents: <span id="map-agents">0</span></span>
+                </div>
+                <div class="resource-display">
+                    <span>Avg Ride: <span id="map-avg">0s</span></span>
+                </div>
+                <div class="resource-display">
+                    <span>Zoom: <span id="zoom-level">1.0x</span></span>
+                </div>
+                <div class="resource-display">
+                    <span>Camera: <span id="camera-pos">1200, 800</span></span>
                 </div>
             </div>
             
-            <!-- Middle: Resources / Title -->
+            <!-- Third: Resources / Title -->
             <div class="ui-section" style="align-items:flex-start;">
                 <h2 style="margin: 0 0 8px 0; color: #ecf0f1;">🚗 Traffic Simulator</h2>
                 <div class="resource-display">
