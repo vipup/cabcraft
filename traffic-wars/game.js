@@ -88,8 +88,12 @@ class TrafficSimulator extends Phaser.Scene {
             const my = e.clientY - rect.top;
             const worldX = mx / this.minimapScaleX;
             const worldY = my / this.minimapScaleY;
+            console.log(`Mini-map clicked at canvas (${mx}, ${my}) -> world (${worldX}, ${worldY})`);
             this.centerCameraOn(worldX, worldY);
         });
+        
+        // Add zoom controls
+        this.setupZoomControls();
         
         // Start ride request timer
         this.time.addEvent({
@@ -232,6 +236,37 @@ class TrafficSimulator extends Phaser.Scene {
             if (pointer.leftButtonDown()) {
                 this.handleLeftClick(pointer);
             }
+        });
+        
+        // Drag to pan camera
+        this.input.on('pointerdown', (pointer) => {
+            if (pointer.rightButtonDown()) {
+                this.isDragging = true;
+                this.dragStartX = pointer.x;
+                this.dragStartY = pointer.y;
+                this.cameraStartX = this.cameras.main.x;
+                this.cameraStartY = this.cameras.main.y;
+            }
+        });
+        
+        this.input.on('pointermove', (pointer) => {
+            if (this.isDragging && pointer.rightButtonDown()) {
+                const deltaX = pointer.x - this.dragStartX;
+                const deltaY = pointer.y - this.dragStartY;
+                const newX = this.cameraStartX - deltaX;
+                const newY = this.cameraStartY - deltaY;
+                
+                // Clamp to world bounds
+                const clampedX = Phaser.Math.Clamp(newX, 0, this.worldWidth - this.cameras.main.width);
+                const clampedY = Phaser.Math.Clamp(newY, 0, this.worldHeight - this.cameras.main.height);
+                
+                this.cameras.main.setPosition(clampedX, clampedY);
+                this.updateUI();
+            }
+        });
+        
+        this.input.on('pointerup', () => {
+            this.isDragging = false;
         });
     }
     
@@ -629,6 +664,11 @@ class TrafficSimulator extends Phaser.Scene {
         document.getElementById('earnings').textContent = this.earnings;
         document.getElementById('rating').textContent = this.rating.toFixed(1);
         document.getElementById('active-rides').textContent = this.activeRides;
+        
+        // Update camera info
+        const cam = this.cameras.main;
+        document.getElementById('zoom-level').textContent = `${cam.zoom.toFixed(1)}x`;
+        document.getElementById('camera-pos').textContent = `${Math.round(cam.centerX)}, ${Math.round(cam.centerY)}`;
     }
     
     update() {
@@ -732,13 +772,65 @@ class TrafficSimulator extends Phaser.Scene {
         document.getElementById('map-avg').textContent = `${Math.round(avgMs/1000)}s`;
     }
 
+    setupZoomControls() {
+        // Mouse wheel zoom
+        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
+            const cam = this.cameras.main;
+            const zoomFactor = 0.1;
+            const currentZoom = cam.zoom;
+            
+            if (deltaY > 0) {
+                // Zoom out
+                const newZoom = Math.max(0.5, currentZoom - zoomFactor);
+                cam.setZoom(newZoom);
+                console.log(`Zoomed out to: ${newZoom}`);
+            } else {
+                // Zoom in
+                const newZoom = Math.min(3.0, currentZoom + zoomFactor);
+                cam.setZoom(newZoom);
+                console.log(`Zoomed in to: ${newZoom}`);
+            }
+            this.updateUI();
+        });
+        
+        // Keyboard zoom controls
+        this.input.keyboard.on('keydown-PLUS', () => {
+            const cam = this.cameras.main;
+            const newZoom = Math.min(3.0, cam.zoom + 0.2);
+            cam.setZoom(newZoom);
+            console.log(`Zoomed in to: ${newZoom}`);
+            this.updateUI();
+        });
+        
+        this.input.keyboard.on('keydown-MINUS', () => {
+            const cam = this.cameras.main;
+            const newZoom = Math.max(0.5, cam.zoom - 0.2);
+            cam.setZoom(newZoom);
+            console.log(`Zoomed out to: ${newZoom}`);
+            this.updateUI();
+        });
+        
+        // Reset zoom with '0' key
+        this.input.keyboard.on('keydown-ZERO', () => {
+            this.cameras.main.setZoom(1.0);
+            console.log('Zoom reset to 1.0');
+            this.updateUI();
+        });
+    }
+
     centerCameraOn(worldX, worldY) {
         const cam = this.cameras.main;
-        const halfW = cam.width / 2;
-        const halfH = cam.height / 2;
-        const targetX = Phaser.Math.Clamp(worldX - halfW, 0, this.worldWidth - cam.width);
-        const targetY = Phaser.Math.Clamp(worldY - halfH, 0, this.worldHeight - cam.height);
-        cam.pan(worldX, worldY, 250, 'Sine.easeInOut');
+        console.log(`Centering camera on world position: (${worldX}, ${worldY})`);
+        
+        // Clamp the target position to world bounds
+        const clampedX = Phaser.Math.Clamp(worldX, 0, this.worldWidth);
+        const clampedY = Phaser.Math.Clamp(worldY, 0, this.worldHeight);
+        
+        // Use centerOn for proper centering
+        cam.centerOn(clampedX, clampedY);
+        
+        console.log(`Camera centered at: (${cam.centerX}, ${cam.centerY})`);
+        this.updateUI();
     }
 }
 
