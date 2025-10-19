@@ -293,6 +293,20 @@ class TrafficSimulator extends Phaser.Scene {
                 nameTextRight.setDepth(1000);
                 
                 this.streetNameObjects.push(nameTextRight);
+                
+                // Add street name in the center for better visibility
+                const nameTextCenter = this.add.text(this.worldWidth / 2, y, streetName, {
+                    fontSize: '14px',
+                    fill: '#ffffff',
+                    backgroundColor: '#000000',
+                    padding: { x: 6, y: 3 },
+                    align: 'center',
+                    fontStyle: 'bold'
+                });
+                nameTextCenter.setOrigin(0.5, 0.5);
+                nameTextCenter.setDepth(1000);
+                
+                this.streetNameObjects.push(nameTextCenter);
             }
         });
         
@@ -328,6 +342,20 @@ class TrafficSimulator extends Phaser.Scene {
                 nameTextBottom.setDepth(1000);
                 
                 this.streetNameObjects.push(nameTextBottom);
+                
+                // Add avenue name in the center for better visibility
+                const nameTextCenter = this.add.text(x, this.worldHeight / 2, avenueName, {
+                    fontSize: '14px',
+                    fill: '#ffffff',
+                    backgroundColor: '#000000',
+                    padding: { x: 6, y: 3 },
+                    align: 'center',
+                    fontStyle: 'bold'
+                });
+                nameTextCenter.setOrigin(0.5, 0.5);
+                nameTextCenter.setDepth(1000);
+                
+                this.streetNameObjects.push(nameTextCenter);
             }
         });
         
