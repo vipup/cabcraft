@@ -1,10 +1,8 @@
-// 🚗 Traffic Simulator - Complete Implementation from Scratch
-// Based on AI_AGENT_REQUIREMENTS.md specifications
+// 🚗 Traffic Simulator - SVG Edition
+// Pure SVG implementation - no WebGL, no Canvas issues!
 
-class TrafficSimulator extends Phaser.Scene {
+class TrafficSimulatorSVG {
     constructor() {
-        super({ key: 'TrafficSimulator' });
-        
         // World specifications
         this.worldWidth = 2400;
         this.worldHeight = 1600;
@@ -48,21 +46,44 @@ class TrafficSimulator extends Phaser.Scene {
             { name: 'University', x: 1200, y: 200, icon: '🎓' }
         ];
         
+        // Camera/viewport
+        this.cameraX = 1200;
+        this.cameraY = 800;
+        this.zoom = 1.0;
+        this.viewportWidth = 0;
+        this.viewportHeight = 0;
+        
         // Input state
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
         this.cameraStart = { x: 0, y: 0 };
-    }
-
-    preload() {
-        // No external assets needed - using dynamic graphics
-    }
-
-    create() {
-        console.log('🚗 Traffic Simulator - Creating game world...');
         
-        // Set world bounds
-        this.physics.world.setBounds(0, 0, this.worldWidth, this.worldHeight);
+        // SVG elements
+        this.gameSVG = null;
+        this.miniMapSVG = null;
+        this.worldGroup = null;
+        this.uiGroup = null;
+    }
+
+    init() {
+        console.log('🚗 Traffic Simulator SVG - Initializing...');
+        
+        // Get SVG elements
+        this.gameSVG = document.getElementById('game-svg');
+        this.miniMapSVG = document.getElementById('minimap-svg');
+        
+        // Calculate viewport size
+        this.updateViewportSize();
+        
+        // Create world group
+        this.worldGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        this.worldGroup.setAttribute('id', 'world-group');
+        this.gameSVG.appendChild(this.worldGroup);
+        
+        // Create UI group (for elements that stay on screen)
+        this.uiGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        this.uiGroup.setAttribute('id', 'ui-group');
+        this.gameSVG.appendChild(this.uiGroup);
         
         // Create city background
         this.createCityBackground();
@@ -79,25 +100,33 @@ class TrafficSimulator extends Phaser.Scene {
         // Setup UI event handlers
         this.setupUIHandlers();
         
-        // Center camera on world center
-        this.cameras.main.centerOn(this.worldWidth / 2, this.worldHeight / 2);
-        
-        // Set camera bounds
-        this.cameras.main.setBounds(0, 0, this.worldWidth, this.worldHeight);
+        // Start game loop
+        this.startGameLoop();
         
         // Start auto ride generation
-        this.time.addEvent({
-            delay: 5000,
-            callback: this.autoGenerateRideRequest,
-            callbackScope: this,
-            loop: true
-        });
+        this.autoRideInterval = setInterval(() => {
+            this.autoGenerateRideRequest();
+        }, 5000);
         
-        console.log('✅ Game world created successfully!');
+        console.log('✅ SVG Game initialized successfully!');
+    }
+
+    updateViewportSize() {
+        const rect = this.gameSVG.getBoundingClientRect();
+        this.viewportWidth = rect.width;
+        this.viewportHeight = rect.height;
+        
+        // Update SVG viewBox to show the current camera view
+        const viewBoxX = this.cameraX - this.viewportWidth / (2 * this.zoom);
+        const viewBoxY = this.cameraY - this.viewportHeight / (2 * this.zoom);
+        const viewBoxWidth = this.viewportWidth / this.zoom;
+        const viewBoxHeight = this.viewportHeight / this.zoom;
+        
+        this.gameSVG.setAttribute('viewBox', `${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`);
     }
 
     createCityBackground() {
-        console.log('🏗️ Creating city background...');
+        console.log('🏗️ Creating SVG city background...');
         
         // Create roads (14 horizontal, 16 vertical)
         this.createRoads();
@@ -105,23 +134,35 @@ class TrafficSimulator extends Phaser.Scene {
         // Create buildings
         this.createBuildings();
         
-        console.log(`✅ City created: ${this.roadObjects.length} roads, ${this.buildingObjects.length} buildings`);
+        console.log(`✅ SVG City created: ${this.roadObjects.length} roads, ${this.buildingObjects.length} buildings`);
     }
 
     createRoads() {
         // Horizontal roads (14 roads)
         for (let i = 0; i < 14; i++) {
             const y = 100 + i * 100; // 100px spacing
-            const road = this.add.rectangle(this.worldWidth / 2, y, this.worldWidth, 32, 0x4a5a6a);
-            road.setDepth(1);
+            const road = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            road.setAttribute('x', '0');
+            road.setAttribute('y', y - 16);
+            road.setAttribute('width', this.worldWidth.toString());
+            road.setAttribute('height', '32');
+            road.setAttribute('fill', '#4a5a6a');
+            road.setAttribute('id', `road-h-${i}`);
+            this.worldGroup.appendChild(road);
             this.roadObjects.push(road);
         }
         
         // Vertical roads (16 roads)
         for (let i = 0; i < 16; i++) {
             const x = 100 + i * 140; // 140px spacing
-            const road = this.add.rectangle(x, this.worldHeight / 2, 32, this.worldHeight, 0x4a5a6a);
-            road.setDepth(1);
+            const road = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            road.setAttribute('x', x - 16);
+            road.setAttribute('y', '0');
+            road.setAttribute('width', '32');
+            road.setAttribute('height', this.worldHeight.toString());
+            road.setAttribute('fill', '#4a5a6a');
+            road.setAttribute('id', `road-v-${i}`);
+            this.worldGroup.appendChild(road);
             this.roadObjects.push(road);
         }
     }
@@ -136,9 +177,16 @@ class TrafficSimulator extends Phaser.Scene {
                 const width = 60 + Math.random() * 60; // 60-120px width
                 const height = 60 + Math.random() * 60; // 60-120px height
                 
-                const building = this.add.rectangle(x, y, width, height, 0x8f9ca3);
-                building.setStrokeStyle(2, 0x6d7d8e);
-                building.setDepth(2);
+                const building = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                building.setAttribute('x', (x - width/2).toString());
+                building.setAttribute('y', (y - height/2).toString());
+                building.setAttribute('width', width.toString());
+                building.setAttribute('height', height.toString());
+                building.setAttribute('fill', '#8f9ca3');
+                building.setAttribute('stroke', '#6d7d8e');
+                building.setAttribute('stroke-width', '2');
+                building.setAttribute('id', `building-${x}-${y}`);
+                this.worldGroup.appendChild(building);
                 this.buildingObjects.push(building);
             }
         }
@@ -161,7 +209,7 @@ class TrafficSimulator extends Phaser.Scene {
     }
 
     createStreetNames() {
-        console.log('🏷️ Creating street names...');
+        console.log('🏷️ Creating SVG street names...');
         
         // Horizontal street names (3 per street: left, right, center)
         for (let i = 0; i < 14; i++) {
@@ -169,33 +217,42 @@ class TrafficSimulator extends Phaser.Scene {
             const streetName = this.streetNames[i] || `Street ${i + 1}`;
             
             // Left edge
-            const leftName = this.add.text(50, y, streetName, {
-                fontSize: '14px',
-                fill: '#ffffff',
-                backgroundColor: '#000000',
-                padding: { x: 4, y: 2 }
-            });
-            leftName.setDepth(1000);
+            const leftName = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            leftName.setAttribute('x', '50');
+            leftName.setAttribute('y', y.toString());
+            leftName.setAttribute('fill', '#ffffff');
+            leftName.setAttribute('font-size', '14');
+            leftName.setAttribute('font-family', 'Arial');
+            leftName.setAttribute('text-anchor', 'start');
+            leftName.setAttribute('id', `street-name-h-${i}-left`);
+            leftName.textContent = streetName;
+            this.worldGroup.appendChild(leftName);
             this.streetNameObjects.push(leftName);
             
             // Right edge
-            const rightName = this.add.text(this.worldWidth - 50, y, streetName, {
-                fontSize: '14px',
-                fill: '#ffffff',
-                backgroundColor: '#000000',
-                padding: { x: 4, y: 2 }
-            });
-            rightName.setDepth(1000);
+            const rightName = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            rightName.setAttribute('x', (this.worldWidth - 50).toString());
+            rightName.setAttribute('y', y.toString());
+            rightName.setAttribute('fill', '#ffffff');
+            rightName.setAttribute('font-size', '14');
+            rightName.setAttribute('font-family', 'Arial');
+            rightName.setAttribute('text-anchor', 'end');
+            rightName.setAttribute('id', `street-name-h-${i}-right`);
+            rightName.textContent = streetName;
+            this.worldGroup.appendChild(rightName);
             this.streetNameObjects.push(rightName);
             
             // Center
-            const centerName = this.add.text(this.worldWidth / 2, y, streetName, {
-                fontSize: '14px',
-                fill: '#ffffff',
-                backgroundColor: '#000000',
-                padding: { x: 4, y: 2 }
-            });
-            centerName.setDepth(1000);
+            const centerName = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            centerName.setAttribute('x', (this.worldWidth / 2).toString());
+            centerName.setAttribute('y', y.toString());
+            centerName.setAttribute('fill', '#ffffff');
+            centerName.setAttribute('font-size', '14');
+            centerName.setAttribute('font-family', 'Arial');
+            centerName.setAttribute('text-anchor', 'middle');
+            centerName.setAttribute('id', `street-name-h-${i}-center`);
+            centerName.textContent = streetName;
+            this.worldGroup.appendChild(centerName);
             this.streetNameObjects.push(centerName);
         }
         
@@ -205,121 +262,144 @@ class TrafficSimulator extends Phaser.Scene {
             const avenueName = this.avenueNames[i] || `Avenue ${i + 1}`;
             
             // Top edge
-            const topName = this.add.text(x, 50, avenueName, {
-                fontSize: '14px',
-                fill: '#ffffff',
-                backgroundColor: '#000000',
-                padding: { x: 4, y: 2 }
-            });
-            topName.setDepth(1000);
+            const topName = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            topName.setAttribute('x', x.toString());
+            topName.setAttribute('y', '50');
+            topName.setAttribute('fill', '#ffffff');
+            topName.setAttribute('font-size', '14');
+            topName.setAttribute('font-family', 'Arial');
+            topName.setAttribute('text-anchor', 'middle');
+            topName.setAttribute('transform', `rotate(-90 ${x} 50)`);
+            topName.setAttribute('id', `avenue-name-v-${i}-top`);
+            topName.textContent = avenueName;
+            this.worldGroup.appendChild(topName);
             this.streetNameObjects.push(topName);
             
             // Bottom edge
-            const bottomName = this.add.text(x, this.worldHeight - 50, avenueName, {
-                fontSize: '14px',
-                fill: '#ffffff',
-                backgroundColor: '#000000',
-                padding: { x: 4, y: 2 }
-            });
-            bottomName.setDepth(1000);
+            const bottomName = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            bottomName.setAttribute('x', x.toString());
+            bottomName.setAttribute('y', (this.worldHeight - 50).toString());
+            bottomName.setAttribute('fill', '#ffffff');
+            bottomName.setAttribute('font-size', '14');
+            bottomName.setAttribute('font-family', 'Arial');
+            bottomName.setAttribute('text-anchor', 'middle');
+            bottomName.setAttribute('transform', `rotate(-90 ${x} ${this.worldHeight - 50})`);
+            bottomName.setAttribute('id', `avenue-name-v-${i}-bottom`);
+            bottomName.textContent = avenueName;
+            this.worldGroup.appendChild(bottomName);
             this.streetNameObjects.push(bottomName);
             
             // Center
-            const centerName = this.add.text(x, this.worldHeight / 2, avenueName, {
-                fontSize: '14px',
-                fill: '#ffffff',
-                backgroundColor: '#000000',
-                padding: { x: 4, y: 2 }
-            });
-            centerName.setDepth(1000);
+            const centerName = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            centerName.setAttribute('x', x.toString());
+            centerName.setAttribute('y', (this.worldHeight / 2).toString());
+            centerName.setAttribute('fill', '#ffffff');
+            centerName.setAttribute('font-size', '14');
+            centerName.setAttribute('font-family', 'Arial');
+            centerName.setAttribute('text-anchor', 'middle');
+            centerName.setAttribute('transform', `rotate(-90 ${x} ${this.worldHeight / 2})`);
+            centerName.setAttribute('id', `avenue-name-v-${i}-center`);
+            centerName.textContent = avenueName;
+            this.worldGroup.appendChild(centerName);
             this.streetNameObjects.push(centerName);
         }
         
-        console.log(`✅ Created ${this.streetNameObjects.length} street name labels`);
+        console.log(`✅ Created ${this.streetNameObjects.length} SVG street name labels`);
     }
 
     createLandmarks() {
-        console.log('🏛️ Creating landmarks...');
+        console.log('🏛️ Creating SVG landmarks...');
         
-        this.landmarks.forEach(landmark => {
-            const landmarkObj = this.add.text(landmark.x, landmark.y, landmark.icon, {
-                fontSize: '24px',
-                fill: '#f39c12'
-            });
-            landmarkObj.setDepth(1001);
+        this.landmarks.forEach((landmark, index) => {
+            const landmarkGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            landmarkGroup.setAttribute('id', `landmark-${index}`);
             
-            const label = this.add.text(landmark.x, landmark.y + 30, landmark.name, {
-                fontSize: '12px',
-                fill: '#ffffff',
-                backgroundColor: '#000000',
-                padding: { x: 4, y: 2 }
-            });
-            label.setDepth(1001);
+            const landmarkIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            landmarkIcon.setAttribute('x', landmark.x.toString());
+            landmarkIcon.setAttribute('y', landmark.y.toString());
+            landmarkIcon.setAttribute('fill', '#f39c12');
+            landmarkIcon.setAttribute('font-size', '24');
+            landmarkIcon.setAttribute('font-family', 'Arial');
+            landmarkIcon.setAttribute('text-anchor', 'middle');
+            landmarkIcon.textContent = landmark.icon;
+            landmarkGroup.appendChild(landmarkIcon);
             
-            this.landmarkObjects.push(landmarkObj, label);
+            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label.setAttribute('x', landmark.x.toString());
+            label.setAttribute('y', (landmark.y + 30).toString());
+            label.setAttribute('fill', '#ffffff');
+            label.setAttribute('font-size', '12');
+            label.setAttribute('font-family', 'Arial');
+            label.setAttribute('text-anchor', 'middle');
+            label.textContent = landmark.name;
+            landmarkGroup.appendChild(label);
+            
+            this.worldGroup.appendChild(landmarkGroup);
+            this.landmarkObjects.push(landmarkGroup);
         });
         
-        console.log(`✅ Created ${this.landmarks.length} landmarks`);
+        console.log(`✅ Created ${this.landmarks.length} SVG landmarks`);
     }
 
     setupInputHandlers() {
         // Left-click drag for camera panning
-        this.input.on('pointerdown', (pointer) => {
-            if (pointer.leftButtonDown()) {
+        this.gameSVG.addEventListener('mousedown', (event) => {
+            if (event.button === 0) { // Left click
                 this.isDragging = true;
-                this.dragStart.x = pointer.x;
-                this.dragStart.y = pointer.y;
-                this.cameraStart.x = this.cameras.main.scrollX;
-                this.cameraStart.y = this.cameras.main.scrollY;
-                this.game.canvas.style.cursor = 'grabbing';
+                this.dragStart.x = event.clientX;
+                this.dragStart.y = event.clientY;
+                this.cameraStart.x = this.cameraX;
+                this.cameraStart.y = this.cameraY;
+                this.gameSVG.style.cursor = 'grabbing';
             }
         });
         
-        this.input.on('pointermove', (pointer) => {
-            if (this.isDragging && pointer.isDown) {
-                const deltaX = this.dragStart.x - pointer.x;
-                const deltaY = this.dragStart.y - pointer.y;
+        this.gameSVG.addEventListener('mousemove', (event) => {
+            if (this.isDragging) {
+                const deltaX = (this.dragStart.x - event.clientX) / this.zoom;
+                const deltaY = (this.dragStart.y - event.clientY) / this.zoom;
                 
-                this.cameras.main.setScroll(
-                    this.cameraStart.x + deltaX,
-                    this.cameraStart.y + deltaY
-                );
+                this.cameraX = this.cameraStart.x + deltaX;
+                this.cameraY = this.cameraStart.y + deltaY;
+                
+                this.updateViewportSize();
             }
         });
         
-        this.input.on('pointerup', () => {
+        this.gameSVG.addEventListener('mouseup', () => {
             this.isDragging = false;
-            this.game.canvas.style.cursor = 'grab';
+            this.gameSVG.style.cursor = 'grab';
         });
         
         // Mouse wheel zoom
-        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
-            const zoomFactor = deltaY > 0 ? 0.9 : 1.1;
-            const newZoom = Phaser.Math.Clamp(this.cameras.main.zoom * zoomFactor, 0.5, 3.0);
-            this.cameras.main.setZoom(newZoom);
+        this.gameSVG.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+            this.zoom = Math.max(0.5, Math.min(3.0, this.zoom * zoomFactor));
+            this.updateViewportSize();
         });
         
         // Keyboard controls
-        this.input.keyboard.on('keydown-PLUS', () => {
-            const newZoom = Phaser.Math.Clamp(this.cameras.main.zoom * 1.1, 0.5, 3.0);
-            this.cameras.main.setZoom(newZoom);
-        });
-        
-        this.input.keyboard.on('keydown-MINUS', () => {
-            const newZoom = Phaser.Math.Clamp(this.cameras.main.zoom * 0.9, 0.5, 3.0);
-            this.cameras.main.setZoom(newZoom);
-        });
-        
-        this.input.keyboard.on('keydown-ZERO', () => {
-            this.cameras.main.setZoom(1.0);
+        document.addEventListener('keydown', (event) => {
+            if (event.key === '+' || event.key === '=') {
+                this.zoom = Math.min(3.0, this.zoom * 1.1);
+                this.updateViewportSize();
+            } else if (event.key === '-') {
+                this.zoom = Math.max(0.5, this.zoom * 0.9);
+                this.updateViewportSize();
+            } else if (event.key === '0') {
+                this.zoom = 1.0;
+                this.updateViewportSize();
+            }
         });
         
         // Right-click to spawn driver
-        this.input.on('pointerdown', (pointer) => {
-            if (pointer.rightButtonDown()) {
-                const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-                this.spawnDriver(worldPoint.x, worldPoint.y);
-            }
+        this.gameSVG.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+            const rect = this.gameSVG.getBoundingClientRect();
+            const worldX = this.cameraX + (event.clientX - rect.left - rect.width/2) / this.zoom;
+            const worldY = this.cameraY + (event.clientY - rect.top - rect.height/2) / this.zoom;
+            this.spawnDriver(worldX, worldY);
         });
     }
 
@@ -337,9 +417,8 @@ class TrafficSimulator extends Phaser.Scene {
         });
         
         // Mini-map click handler
-        const minimapCanvas = document.getElementById('minimap-canvas');
-        minimapCanvas.addEventListener('click', (event) => {
-            const rect = minimapCanvas.getBoundingClientRect();
+        this.miniMapSVG.addEventListener('click', (event) => {
+            const rect = this.miniMapSVG.getBoundingClientRect();
             const x = (event.clientX - rect.left) / rect.width * this.worldWidth;
             const y = (event.clientY - rect.top) / rect.height * this.worldHeight;
             this.centerCameraOn(x, y);
@@ -350,29 +429,42 @@ class TrafficSimulator extends Phaser.Scene {
         const x = 200 + Math.random() * (this.worldWidth - 400);
         const y = 200 + Math.random() * (this.worldHeight - 400);
         
-        const rider = this.add.rectangle(x, y, 18, 18, 0x2ecc71);
-        rider.setStrokeStyle(2, 0x27ae60);
-        rider.setDepth(10);
+        const riderGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        riderGroup.setAttribute('id', `rider-${Date.now()}`);
         
-        // Add rider icon
-        const icon = this.add.text(x, y, '🏍️', {
-            fontSize: '12px'
-        });
-        icon.setDepth(11);
-        icon.setOrigin(0.5);
+        const riderRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        riderRect.setAttribute('x', (x - 9).toString());
+        riderRect.setAttribute('y', (y - 9).toString());
+        riderRect.setAttribute('width', '18');
+        riderRect.setAttribute('height', '18');
+        riderRect.setAttribute('fill', '#2ecc71');
+        riderRect.setAttribute('stroke', '#27ae60');
+        riderRect.setAttribute('stroke-width', '2');
+        riderGroup.appendChild(riderRect);
+        
+        const riderIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        riderIcon.setAttribute('x', x.toString());
+        riderIcon.setAttribute('y', (y + 4).toString());
+        riderIcon.setAttribute('fill', '#000000');
+        riderIcon.setAttribute('font-size', '12');
+        riderIcon.setAttribute('font-family', 'Arial');
+        riderIcon.setAttribute('text-anchor', 'middle');
+        riderIcon.textContent = '🏍️';
+        riderGroup.appendChild(riderIcon);
+        
+        this.worldGroup.appendChild(riderGroup);
         
         const riderData = {
             x: x,
             y: y,
             status: 'idle',
-            icon: icon
+            element: riderGroup
         };
         
-        rider.setData('riderData', riderData);
-        this.riders.push(rider);
+        this.riders.push(riderData);
         this.totalAgents++;
         
-        console.log(`🏍️ Spawned rider at (${Math.round(x)}, ${Math.round(y)})`);
+        console.log(`🏍️ Spawned SVG rider at (${Math.round(x)}, ${Math.round(y)})`);
     }
 
     spawnDriver(x = null, y = null) {
@@ -381,30 +473,43 @@ class TrafficSimulator extends Phaser.Scene {
             y = 200 + Math.random() * (this.worldHeight - 400);
         }
         
-        const driver = this.add.rectangle(x, y, 24, 24, 0x3498db);
-        driver.setStrokeStyle(2, 0x2980b9);
-        driver.setDepth(10);
+        const driverGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        driverGroup.setAttribute('id', `driver-${Date.now()}`);
         
-        // Add driver icon
-        const icon = this.add.text(x, y, '🚗', {
-            fontSize: '16px'
-        });
-        icon.setDepth(11);
-        icon.setOrigin(0.5);
+        const driverRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        driverRect.setAttribute('x', (x - 12).toString());
+        driverRect.setAttribute('y', (y - 12).toString());
+        driverRect.setAttribute('width', '24');
+        driverRect.setAttribute('height', '24');
+        driverRect.setAttribute('fill', '#3498db');
+        driverRect.setAttribute('stroke', '#2980b9');
+        driverRect.setAttribute('stroke-width', '2');
+        driverGroup.appendChild(driverRect);
+        
+        const driverIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        driverIcon.setAttribute('x', x.toString());
+        driverIcon.setAttribute('y', (y + 4).toString());
+        driverIcon.setAttribute('fill', '#000000');
+        driverIcon.setAttribute('font-size', '16');
+        driverIcon.setAttribute('font-family', 'Arial');
+        driverIcon.setAttribute('text-anchor', 'middle');
+        driverIcon.textContent = '🚗';
+        driverGroup.appendChild(driverIcon);
+        
+        this.worldGroup.appendChild(driverGroup);
         
         const driverData = {
             x: x,
             y: y,
             status: 'idle',
             speed: 100 + Math.random() * 50, // 100-150 pixels per second
-            icon: icon
+            element: driverGroup
         };
         
-        driver.setData('driverData', driverData);
-        this.drivers.push(driver);
+        this.drivers.push(driverData);
         this.totalAgents++;
         
-        console.log(`🚗 Spawned driver at (${Math.round(x)}, ${Math.round(y)})`);
+        console.log(`🚗 Spawned SVG driver at (${Math.round(x)}, ${Math.round(y)})`);
     }
 
     createRideRequest() {
@@ -414,10 +519,7 @@ class TrafficSimulator extends Phaser.Scene {
         }
         
         // Find idle riders
-        const idleRiders = this.riders.filter(rider => {
-            const data = rider.getData('riderData');
-            return data.status === 'idle';
-        });
+        const idleRiders = this.riders.filter(rider => rider.status === 'idle');
         
         if (idleRiders.length === 0) {
             alert('All riders are busy!');
@@ -426,42 +528,60 @@ class TrafficSimulator extends Phaser.Scene {
         
         // Pick random idle rider
         const rider = idleRiders[Math.floor(Math.random() * idleRiders.length)];
-        const riderData = rider.getData('riderData');
         
         // Generate pickup and dropoff points
-        const pickupX = riderData.x;
-        const pickupY = riderData.y;
+        const pickupX = rider.x;
+        const pickupY = rider.y;
         
         const dropoffX = 200 + Math.random() * (this.worldWidth - 400);
         const dropoffY = 200 + Math.random() * (this.worldHeight - 400);
         
         // Calculate fare
-        const distance = Phaser.Math.Distance.Between(pickupX, pickupY, dropoffX, dropoffY);
+        const distance = Math.sqrt((dropoffX - pickupX) ** 2 + (dropoffY - pickupY) ** 2);
         const fare = Math.round(distance * 0.1);
         
         // Create pickup marker
-        const pickupMarker = this.add.circle(pickupX, pickupY, 20, 0xf1c40f);
-        pickupMarker.setStrokeStyle(3, 0xe67e22);
-        pickupMarker.setDepth(5);
+        const pickupMarker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        pickupMarker.setAttribute('cx', pickupX.toString());
+        pickupMarker.setAttribute('cy', pickupY.toString());
+        pickupMarker.setAttribute('r', '20');
+        pickupMarker.setAttribute('fill', '#f1c40f');
+        pickupMarker.setAttribute('stroke', '#e67e22');
+        pickupMarker.setAttribute('stroke-width', '3');
+        pickupMarker.setAttribute('id', `pickup-${Date.now()}`);
+        this.worldGroup.appendChild(pickupMarker);
         
-        const pickupText = this.add.text(pickupX, pickupY, `$${fare}`, {
-            fontSize: '12px',
-            fill: '#000000',
-            fontWeight: 'bold'
-        });
-        pickupText.setDepth(6);
-        pickupText.setOrigin(0.5);
+        const pickupText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        pickupText.setAttribute('x', pickupX.toString());
+        pickupText.setAttribute('y', (pickupY + 4).toString());
+        pickupText.setAttribute('fill', '#000000');
+        pickupText.setAttribute('font-size', '12');
+        pickupText.setAttribute('font-family', 'Arial');
+        pickupText.setAttribute('font-weight', 'bold');
+        pickupText.setAttribute('text-anchor', 'middle');
+        pickupText.textContent = `$${fare}`;
+        this.worldGroup.appendChild(pickupText);
         
         // Create dropoff marker
-        const dropoffMarker = this.add.circle(dropoffX, dropoffY, 15, 0x2ecc71);
-        dropoffMarker.setStrokeStyle(3, 0x27ae60);
-        dropoffMarker.setDepth(5);
+        const dropoffMarker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dropoffMarker.setAttribute('cx', dropoffX.toString());
+        dropoffMarker.setAttribute('cy', dropoffY.toString());
+        dropoffMarker.setAttribute('r', '15');
+        dropoffMarker.setAttribute('fill', '#2ecc71');
+        dropoffMarker.setAttribute('stroke', '#27ae60');
+        dropoffMarker.setAttribute('stroke-width', '3');
+        dropoffMarker.setAttribute('id', `dropoff-${Date.now()}`);
+        this.worldGroup.appendChild(dropoffMarker);
         
-        const dropoffText = this.add.text(dropoffX, dropoffY, '🎯', {
-            fontSize: '12px'
-        });
-        dropoffText.setDepth(6);
-        dropoffText.setOrigin(0.5);
+        const dropoffText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        dropoffText.setAttribute('x', dropoffX.toString());
+        dropoffText.setAttribute('y', (dropoffY + 4).toString());
+        dropoffText.setAttribute('fill', '#000000');
+        dropoffText.setAttribute('font-size', '12');
+        dropoffText.setAttribute('font-family', 'Arial');
+        dropoffText.setAttribute('text-anchor', 'middle');
+        dropoffText.textContent = '🎯';
+        this.worldGroup.appendChild(dropoffText);
         
         // Create ride request
         const rideRequest = {
@@ -484,20 +604,17 @@ class TrafficSimulator extends Phaser.Scene {
         this.activeRides++;
         
         // Update rider status
-        riderData.status = 'waiting_for_pickup';
+        rider.status = 'waiting_for_pickup';
         
         // Assign driver
         this.assignDriverToRide(rideRequest);
         
-        console.log(`📱 Created ride request: $${fare} fare, distance: ${Math.round(distance)}px`);
+        console.log(`📱 Created SVG ride request: $${fare} fare, distance: ${Math.round(distance)}px`);
     }
 
     assignDriverToRide(rideRequest) {
         // Find idle drivers
-        const idleDrivers = this.drivers.filter(driver => {
-            const data = driver.getData('driverData');
-            return data.status === 'idle';
-        });
+        const idleDrivers = this.drivers.filter(driver => driver.status === 'idle');
         
         if (idleDrivers.length === 0) {
             console.log('No available drivers for ride request');
@@ -509,10 +626,7 @@ class TrafficSimulator extends Phaser.Scene {
         let closestDistance = Infinity;
         
         idleDrivers.forEach(driver => {
-            const distance = Phaser.Math.Distance.Between(
-                driver.x, driver.y,
-                rideRequest.pickupX, rideRequest.pickupY
-            );
+            const distance = Math.sqrt((driver.x - rideRequest.pickupX) ** 2 + (driver.y - rideRequest.pickupY) ** 2);
             
             if (distance < closestDistance) {
                 closestDistance = distance;
@@ -522,120 +636,64 @@ class TrafficSimulator extends Phaser.Scene {
         
         if (closestDriver) {
             rideRequest.assignedDriver = closestDriver;
-            const driverData = closestDriver.getData('driverData');
-            driverData.status = 'going_to_rider';
+            closestDriver.status = 'going_to_rider';
             
             // Move driver to pickup
             this.moveDriverToPickup(rideRequest);
             
-            console.log(`🚗 Assigned driver to ride request ${rideRequest.id}`);
+            console.log(`🚗 Assigned SVG driver to ride request ${rideRequest.id}`);
         }
     }
 
     moveDriverToPickup(rideRequest) {
         const driver = rideRequest.assignedDriver;
-        const driverData = driver.getData('driverData');
         
-        const distance = Phaser.Math.Distance.Between(
-            driver.x, driver.y,
-            rideRequest.pickupX, rideRequest.pickupY
-        );
+        const distance = Math.sqrt((driver.x - rideRequest.pickupX) ** 2 + (driver.y - rideRequest.pickupY) ** 2);
+        const duration = (distance / driver.speed) * 1000; // Convert to milliseconds
         
-        const duration = (distance / driverData.speed) * 1000; // Convert to milliseconds
-        
-        this.tweens.add({
-            targets: driver,
-            x: rideRequest.pickupX,
-            y: rideRequest.pickupY,
-            duration: duration,
-            ease: 'Linear',
-            onComplete: () => {
-                this.pickupRider(rideRequest);
-            }
-        });
-        
-        // Move driver icon
-        this.tweens.add({
-            targets: driverData.icon,
-            x: rideRequest.pickupX,
-            y: rideRequest.pickupY,
-            duration: duration,
-            ease: 'Linear'
+        // Animate driver movement
+        this.animateElement(driver.element, rideRequest.pickupX, rideRequest.pickupY, duration, () => {
+            this.pickupRider(rideRequest);
         });
     }
 
     pickupRider(rideRequest) {
         const driver = rideRequest.assignedDriver;
-        const driverData = driver.getData('driverData');
-        const riderData = rideRequest.rider.getData('riderData');
+        const rider = rideRequest.rider;
         
         // Update statuses
-        driverData.status = 'on_ride';
-        riderData.status = 'in_ride';
+        driver.status = 'on_ride';
+        rider.status = 'in_ride';
         
         // Hide pickup marker
-        rideRequest.pickupMarker.setVisible(false);
-        rideRequest.pickupText.setVisible(false);
+        rideRequest.pickupMarker.remove();
+        rideRequest.pickupText.remove();
         
         // Move to dropoff
         this.moveToDropoff(rideRequest);
         
-        console.log(`🚗 Driver picked up rider for ride ${rideRequest.id}`);
+        console.log(`🚗 SVG Driver picked up rider for ride ${rideRequest.id}`);
     }
 
     moveToDropoff(rideRequest) {
         const driver = rideRequest.assignedDriver;
-        const driverData = driver.getData('driverData');
+        const rider = rideRequest.rider;
         
-        const distance = Phaser.Math.Distance.Between(
-            driver.x, driver.y,
-            rideRequest.dropoffX, rideRequest.dropoffY
-        );
+        const distance = Math.sqrt((driver.x - rideRequest.dropoffX) ** 2 + (driver.y - rideRequest.dropoffY) ** 2);
+        const duration = (distance / driver.speed) * 1000;
         
-        const duration = (distance / driverData.speed) * 1000;
-        
-        this.tweens.add({
-            targets: driver,
-            x: rideRequest.dropoffX,
-            y: rideRequest.dropoffY,
-            duration: duration,
-            ease: 'Linear',
-            onComplete: () => {
-                this.completeRide(rideRequest);
-            }
+        // Animate driver movement
+        this.animateElement(driver.element, rideRequest.dropoffX, rideRequest.dropoffY, duration, () => {
+            this.completeRide(rideRequest);
         });
         
-        // Move driver icon
-        this.tweens.add({
-            targets: driverData.icon,
-            x: rideRequest.dropoffX,
-            y: rideRequest.dropoffY,
-            duration: duration,
-            ease: 'Linear'
-        });
-        
-        // Move rider with driver
-        this.tweens.add({
-            targets: rideRequest.rider,
-            x: rideRequest.dropoffX,
-            y: rideRequest.dropoffY,
-            duration: duration,
-            ease: 'Linear'
-        });
-        
-        this.tweens.add({
-            targets: riderData.icon,
-            x: rideRequest.dropoffX,
-            y: rideRequest.dropoffY,
-            duration: duration,
-            ease: 'Linear'
-        });
+        // Animate rider movement
+        this.animateElement(rider.element, rideRequest.dropoffX, rideRequest.dropoffY, duration);
     }
 
     completeRide(rideRequest) {
         const driver = rideRequest.assignedDriver;
-        const driverData = driver.getData('driverData');
-        const riderData = rideRequest.rider.getData('riderData');
+        const rider = rideRequest.rider;
         
         // Update earnings
         this.earnings += rideRequest.fare;
@@ -648,14 +706,12 @@ class TrafficSimulator extends Phaser.Scene {
         this.rating = Math.min(5.0, this.rating + ratingChange);
         
         // Reset statuses
-        driverData.status = 'idle';
-        riderData.status = 'idle';
+        driver.status = 'idle';
+        rider.status = 'idle';
         
         // Remove markers
-        rideRequest.pickupMarker.destroy();
-        rideRequest.pickupText.destroy();
-        rideRequest.dropoffMarker.destroy();
-        rideRequest.dropoffText.destroy();
+        rideRequest.dropoffMarker.remove();
+        rideRequest.dropoffText.remove();
         
         // Remove ride request
         const index = this.rideRequests.indexOf(rideRequest);
@@ -665,7 +721,54 @@ class TrafficSimulator extends Phaser.Scene {
         
         this.activeRides--;
         
-        console.log(`✅ Completed ride: +$${rideRequest.fare}, rating: ${this.rating.toFixed(1)}`);
+        console.log(`✅ Completed SVG ride: +$${rideRequest.fare}, rating: ${this.rating.toFixed(1)}`);
+    }
+
+    animateElement(element, targetX, targetY, duration, onComplete = null) {
+        const startX = parseFloat(element.getAttribute('x') || element.querySelector('rect').getAttribute('x')) + 
+                      (parseFloat(element.querySelector('rect').getAttribute('width')) / 2);
+        const startY = parseFloat(element.getAttribute('y') || element.querySelector('rect').getAttribute('y')) + 
+                      (parseFloat(element.querySelector('rect').getAttribute('height')) / 2);
+        
+        const deltaX = targetX - startX;
+        const deltaY = targetY - startY;
+        
+        const startTime = Date.now();
+        
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            const currentX = startX + deltaX * progress;
+            const currentY = startY + deltaY * progress;
+            
+            // Update element position
+            const rect = element.querySelector('rect');
+            const text = element.querySelector('text');
+            
+            rect.setAttribute('x', (currentX - parseFloat(rect.getAttribute('width')) / 2).toString());
+            rect.setAttribute('y', (currentY - parseFloat(rect.getAttribute('height')) / 2).toString());
+            
+            if (text) {
+                text.setAttribute('x', currentX.toString());
+                text.setAttribute('y', (currentY + 4).toString());
+            }
+            
+            // Update data
+            const data = this.drivers.find(d => d.element === element) || this.riders.find(r => r.element === element);
+            if (data) {
+                data.x = currentX;
+                data.y = currentY;
+            }
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else if (onComplete) {
+                onComplete();
+            }
+        };
+        
+        requestAnimationFrame(animate);
     }
 
     autoGenerateRideRequest() {
@@ -675,168 +778,144 @@ class TrafficSimulator extends Phaser.Scene {
     }
 
     centerCameraOn(x, y) {
-        this.cameras.main.pan(x, y, 250, 'Power2');
+        this.cameraX = x;
+        this.cameraY = y;
+        this.updateViewportSize();
     }
 
-    update(time, delta) {
-        // Update game time
-        this.gameTime += delta;
-        
-        // Update object visibility (viewport culling)
-        this.updateObjectVisibility();
-        
-        // Update mini-map
-        this.renderMiniMap();
-        
-        // Update UI
-        this.updateUI();
-    }
-
-    updateObjectVisibility() {
-        const camera = this.cameras.main;
-        const viewport = {
-            left: camera.scrollX - 50,
-            right: camera.scrollX + camera.width + 50,
-            top: camera.scrollY - 50,
-            bottom: camera.scrollY + camera.height + 50
+    startGameLoop() {
+        const gameLoop = () => {
+            // Update game time
+            this.gameTime += 16; // ~60 FPS
+            
+            // Update mini-map
+            this.renderMiniMap();
+            
+            // Update UI
+            this.updateUI();
+            
+            requestAnimationFrame(gameLoop);
         };
         
-        // Update street name visibility
-        this.streetNameObjects.forEach(name => {
-            const visible = name.x >= viewport.left && name.x <= viewport.right &&
-                           name.y >= viewport.top && name.y <= viewport.bottom;
-            name.setVisible(visible);
-        });
-        
-        // Update building visibility
-        this.buildingObjects.forEach(building => {
-            const visible = building.x >= viewport.left && building.x <= viewport.right &&
-                           building.y >= viewport.top && building.y <= viewport.bottom;
-            building.setVisible(visible);
-        });
-        
-        // Update landmark visibility
-        this.landmarkObjects.forEach(landmark => {
-            const visible = landmark.x >= viewport.left && landmark.x <= viewport.right &&
-                           landmark.y >= viewport.top && landmark.y <= viewport.bottom;
-            landmark.setVisible(visible);
-        });
+        requestAnimationFrame(gameLoop);
     }
 
     renderMiniMap() {
-        const canvas = document.getElementById('minimap-canvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Clear canvas
-        ctx.fillStyle = '#2c3e50';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Clear mini-map
+        this.miniMapSVG.innerHTML = '';
         
         // Draw roads
-        ctx.fillStyle = '#4a5a6a';
-        
         // Horizontal roads
         for (let i = 0; i < 14; i++) {
-            const y = (100 + i * 100) / this.worldHeight * canvas.height;
-            ctx.fillRect(0, y, canvas.width, 2);
+            const y = (100 + i * 100) / this.worldHeight * 160;
+            const road = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            road.setAttribute('x', '0');
+            road.setAttribute('y', (y - 1).toString());
+            road.setAttribute('width', '240');
+            road.setAttribute('height', '2');
+            road.setAttribute('fill', '#4a5a6a');
+            this.miniMapSVG.appendChild(road);
         }
         
         // Vertical roads
         for (let i = 0; i < 16; i++) {
-            const x = (100 + i * 140) / this.worldWidth * canvas.width;
-            ctx.fillRect(x, 0, 2, canvas.height);
+            const x = (100 + i * 140) / this.worldWidth * 240;
+            const road = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            road.setAttribute('x', (x - 1).toString());
+            road.setAttribute('y', '0');
+            road.setAttribute('width', '2');
+            road.setAttribute('height', '160');
+            road.setAttribute('fill', '#4a5a6a');
+            this.miniMapSVG.appendChild(road);
         }
         
         // Draw buildings
-        ctx.fillStyle = '#8f9ca3';
         this.buildingObjects.forEach(building => {
-            if (building.visible) {
-                const x = building.x / this.worldWidth * canvas.width;
-                const y = building.y / this.worldHeight * canvas.height;
-                const width = building.width / this.worldWidth * canvas.width;
-                const height = building.height / this.worldHeight * canvas.height;
-                ctx.fillRect(x - width/2, y - height/2, width, height);
-            }
+            const x = parseFloat(building.getAttribute('x')) / this.worldWidth * 240;
+            const y = parseFloat(building.getAttribute('y')) / this.worldHeight * 160;
+            const width = parseFloat(building.getAttribute('width')) / this.worldWidth * 240;
+            const height = parseFloat(building.getAttribute('height')) / this.worldHeight * 160;
+            
+            const miniBuilding = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            miniBuilding.setAttribute('x', x.toString());
+            miniBuilding.setAttribute('y', y.toString());
+            miniBuilding.setAttribute('width', width.toString());
+            miniBuilding.setAttribute('height', height.toString());
+            miniBuilding.setAttribute('fill', '#8f9ca3');
+            this.miniMapSVG.appendChild(miniBuilding);
         });
         
         // Draw drivers
-        ctx.fillStyle = '#3498db';
         this.drivers.forEach(driver => {
-            const x = driver.x / this.worldWidth * canvas.width;
-            const y = driver.y / this.worldHeight * canvas.height;
-            ctx.fillRect(x - 2, y - 2, 4, 4);
+            const x = driver.x / this.worldWidth * 240;
+            const y = driver.y / this.worldHeight * 160;
+            
+            const miniDriver = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            miniDriver.setAttribute('x', (x - 2).toString());
+            miniDriver.setAttribute('y', (y - 2).toString());
+            miniDriver.setAttribute('width', '4');
+            miniDriver.setAttribute('height', '4');
+            miniDriver.setAttribute('fill', '#3498db');
+            this.miniMapSVG.appendChild(miniDriver);
         });
         
         // Draw riders
-        ctx.fillStyle = '#2ecc71';
         this.riders.forEach(rider => {
-            const x = rider.x / this.worldWidth * canvas.width;
-            const y = rider.y / this.worldHeight * canvas.height;
-            ctx.fillRect(x - 1, y - 1, 2, 2);
+            const x = rider.x / this.worldWidth * 240;
+            const y = rider.y / this.worldHeight * 160;
+            
+            const miniRider = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            miniRider.setAttribute('x', (x - 1).toString());
+            miniRider.setAttribute('y', (y - 1).toString());
+            miniRider.setAttribute('width', '2');
+            miniRider.setAttribute('height', '2');
+            miniRider.setAttribute('fill', '#2ecc71');
+            this.miniMapSVG.appendChild(miniRider);
         });
         
         // Draw ride requests
         this.rideRequests.forEach(ride => {
             // Pickup marker
-            ctx.fillStyle = '#f1c40f';
-            const pickupX = ride.pickupX / this.worldWidth * canvas.width;
-            const pickupY = ride.pickupY / this.worldHeight * canvas.height;
-            ctx.beginPath();
-            ctx.arc(pickupX, pickupY, 3, 0, Math.PI * 2);
-            ctx.fill();
+            const pickupX = ride.pickupX / this.worldWidth * 240;
+            const pickupY = ride.pickupY / this.worldHeight * 160;
+            const pickupMarker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            pickupMarker.setAttribute('cx', pickupX.toString());
+            pickupMarker.setAttribute('cy', pickupY.toString());
+            pickupMarker.setAttribute('r', '3');
+            pickupMarker.setAttribute('fill', '#f1c40f');
+            this.miniMapSVG.appendChild(pickupMarker);
             
             // Dropoff marker
-            ctx.fillStyle = '#2ecc71';
-            const dropoffX = ride.dropoffX / this.worldWidth * canvas.width;
-            const dropoffY = ride.dropoffY / this.worldHeight * canvas.height;
-            ctx.beginPath();
-            ctx.arc(dropoffX, dropoffY, 2, 0, Math.PI * 2);
-            ctx.fill();
+            const dropoffX = ride.dropoffX / this.worldWidth * 240;
+            const dropoffY = ride.dropoffY / this.worldHeight * 160;
+            const dropoffMarker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dropoffMarker.setAttribute('cx', dropoffX.toString());
+            dropoffMarker.setAttribute('cy', dropoffY.toString());
+            dropoffMarker.setAttribute('r', '2');
+            dropoffMarker.setAttribute('fill', '#2ecc71');
+            this.miniMapSVG.appendChild(dropoffMarker);
         });
         
         // Draw viewport indicator (red square)
-        this.drawViewportIndicator(ctx);
+        const viewBoxX = this.cameraX - this.viewportWidth / (2 * this.zoom);
+        const viewBoxY = this.cameraY - this.viewportHeight / (2 * this.zoom);
+        const viewBoxWidth = this.viewportWidth / this.zoom;
+        const viewBoxHeight = this.viewportHeight / this.zoom;
         
-        // Draw street names on mini-map
-        this.drawMiniMapStreetNames(ctx);
-    }
-
-    drawViewportIndicator(ctx) {
-        const camera = this.cameras.main;
-        const canvas = document.getElementById('minimap-canvas');
+        const left = viewBoxX / this.worldWidth * 240;
+        const top = viewBoxY / this.worldHeight * 160;
+        const width = viewBoxWidth / this.worldWidth * 240;
+        const height = viewBoxHeight / this.worldHeight * 160;
         
-        const left = camera.scrollX / this.worldWidth * canvas.width;
-        const top = camera.scrollY / this.worldHeight * canvas.height;
-        const width = camera.width / this.worldWidth * canvas.width;
-        const height = camera.height / this.worldHeight * canvas.height;
-        
-        ctx.strokeStyle = '#e74c3c';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(left, top, width, height);
-    }
-
-    drawMiniMapStreetNames(ctx) {
-        const canvas = document.getElementById('minimap-canvas');
-        ctx.font = '8px Arial';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        
-        // Draw horizontal street names
-        for (let i = 0; i < 14; i++) {
-            const y = (100 + i * 100) / this.worldHeight * canvas.height;
-            const streetName = this.streetNames[i] || `S${i + 1}`;
-            ctx.fillText(streetName, canvas.width / 2, y - 2);
-        }
-        
-        // Draw vertical avenue names
-        for (let i = 0; i < 16; i++) {
-            const x = (100 + i * 140) / this.worldWidth * canvas.width;
-            const avenueName = this.avenueNames[i] || `A${i + 1}`;
-            ctx.save();
-            ctx.translate(x + 10, canvas.height / 2);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText(avenueName, 0, 0);
-            ctx.restore();
-        }
+        const viewportIndicator = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        viewportIndicator.setAttribute('x', left.toString());
+        viewportIndicator.setAttribute('y', top.toString());
+        viewportIndicator.setAttribute('width', width.toString());
+        viewportIndicator.setAttribute('height', height.toString());
+        viewportIndicator.setAttribute('fill', 'none');
+        viewportIndicator.setAttribute('stroke', '#e74c3c');
+        viewportIndicator.setAttribute('stroke-width', '2');
+        this.miniMapSVG.appendChild(viewportIndicator);
     }
 
     updateUI() {
@@ -858,12 +937,10 @@ class TrafficSimulator extends Phaser.Scene {
         document.getElementById('map-agents').textContent = this.totalAgents;
         
         // Update zoom level
-        document.getElementById('zoom-level').textContent = `${this.cameras.main.zoom.toFixed(1)}x`;
+        document.getElementById('zoom-level').textContent = `${this.zoom.toFixed(1)}x`;
         
         // Update camera position
-        const camX = Math.round(this.cameras.main.scrollX + this.cameras.main.width / 2);
-        const camY = Math.round(this.cameras.main.scrollY + this.cameras.main.height / 2);
-        document.getElementById('camera-pos').textContent = `${camX}, ${camY}`;
+        document.getElementById('camera-pos').textContent = `${Math.round(this.cameraX)}, ${Math.round(this.cameraY)}`;
         
         // Update average ride duration
         if (this.rideRequests.length > 0) {
@@ -879,78 +956,20 @@ class TrafficSimulator extends Phaser.Scene {
 
 // Initialize game when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 DOM ready, initializing game...');
+    console.log('🚀 DOM ready, initializing SVG game...');
     
-    // Game configuration
-    const config = {
-        type: Phaser.CANVAS, // Force Canvas rendering instead of WebGL
-        width: window.innerWidth,
-        height: window.innerHeight - 140, // Leave space for bottom UI
-        parent: 'game-canvas',
-        backgroundColor: '#2c3e50',
-        scene: TrafficSimulator,
-        scale: {
-            mode: Phaser.Scale.RESIZE,
-            autoCenter: Phaser.Scale.CENTER_BOTH,
-            width: window.innerWidth,
-            height: window.innerHeight - 140
-        },
-        physics: {
-            default: 'arcade',
-            arcade: {
-                gravity: { y: 0 },
-                debug: false
-            }
-        }
-    };
-
-    // Create game instance
-    const game = new Phaser.Game(config);
+    const game = new TrafficSimulatorSVG();
+    game.init();
     
     // Make game globally accessible
     window.game = game;
     
-    // Force immediate canvas resize
-    setTimeout(() => {
-        const canvas = document.getElementById('game-canvas');
-        if (canvas && game) {
-            const newWidth = window.innerWidth;
-            const newHeight = window.innerHeight - 140;
-            canvas.width = newWidth;
-            canvas.height = newHeight;
-            game.scale.resize(newWidth, newHeight);
-            console.log(`🔧 Immediate canvas resize: ${newWidth}x${newHeight}`);
-        }
-    }, 100);
-    // Handle window resize
-    window.addEventListener('resize', () => {
-        const newWidth = window.innerWidth;
-        const newHeight = window.innerHeight - 140;
-        game.scale.resize(newWidth, newHeight);
-        game.scale.setGameSize(newWidth, newHeight);
-    });
+    console.log('🚗 Traffic Simulator SVG - Game initialized!');
+});
 
-    // Force canvas styling on load
-    window.addEventListener('load', () => {
-        const canvas = document.getElementById('game-canvas');
-        if (canvas) {
-            canvas.style.width = '100%';
-            canvas.style.height = '100%';
-            canvas.style.position = 'absolute';
-            canvas.style.top = '0';
-            canvas.style.left = '0';
-            canvas.style.right = '0';
-            canvas.style.bottom = '140px';
-            
-            // Force canvas dimensions
-            const newWidth = window.innerWidth;
-            const newHeight = window.innerHeight - 140;
-            canvas.width = newWidth;
-            canvas.height = newHeight;
-            
-            console.log(`🔧 Canvas resized to: ${newWidth}x${newHeight}`);
-        }
-    });
-
-    console.log('🚗 Traffic Simulator - Game initialized!');
+// Handle window resize
+window.addEventListener('resize', () => {
+    if (window.game) {
+        window.game.updateViewportSize();
+    }
 });

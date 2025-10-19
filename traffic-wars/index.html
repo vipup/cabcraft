@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚗 Traffic Simulator - Ride Sharing Game</title>
+    <title>🚗 Traffic Simulator - SVG Edition</title>
     <style>
         * {
             margin: 0;
@@ -24,7 +24,7 @@
             height: 100vh;
         }
 
-        #game-canvas {
+        #game-svg {
             position: absolute;
             top: 0;
             left: 0;
@@ -34,7 +34,7 @@
             cursor: grab;
         }
 
-        #game-canvas:active {
+        #game-svg:active {
             cursor: grabbing;
         }
 
@@ -71,7 +71,7 @@
             text-align: center;
         }
 
-        #minimap-canvas {
+        #minimap-svg {
             width: 100%;
             height: 80px;
             background: #2c3e50;
@@ -144,20 +144,6 @@
             font-size: 18px;
             margin-bottom: 8px;
         }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5px;
-            font-size: 10px;
-        }
-
-        .stat-item {
-            background: rgba(52, 73, 94, 0.6);
-            padding: 3px 6px;
-            border-radius: 3px;
-            border: 1px solid #34495e;
-        }
     </style>
 </head>
 <body>
@@ -166,7 +152,7 @@
             <!-- Left: Minimap like Warcraft -->
             <div id="mapview">
                 <h3>Map</h3>
-                <canvas id="minimap-canvas" width="240" height="160"></canvas>
+                <svg id="minimap-svg" viewBox="0 0 240 160"></svg>
                 <div id="map-stats">
                     <div>Time: <span id="map-time">0:00</span></div>
                     <div>Agents: <span id="map-agents">0</span></div>
@@ -198,10 +184,9 @@
                 <div class="selected-info" id="selected-info">No units selected</div>
             </div>
         </div>
-        <canvas id="game-canvas"></canvas>
+        <svg id="game-svg" viewBox="0 0 2400 1600"></svg>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
