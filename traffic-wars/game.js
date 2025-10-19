@@ -1,560 +1,469 @@
-// Traffic Simulator - Ride Sharing Game
-// A simulation where riders request rides and drivers compete to complete them
+// 🚗 Traffic Simulator - Complete Implementation from Scratch
+// Based on AI_AGENT_REQUIREMENTS.md specifications
 
 class TrafficSimulator extends Phaser.Scene {
     constructor() {
         super({ key: 'TrafficSimulator' });
         
+        // World specifications
+        this.worldWidth = 2400;
+        this.worldHeight = 1600;
+        
         // Game state
         this.earnings = 0;
         this.rating = 5.0;
         this.activeRides = 0;
-        this.riders = [];
+        this.gameTime = 0;
+        this.totalAgents = 0;
+        
+        // Object arrays
         this.drivers = [];
+        this.riders = [];
         this.rideRequests = [];
-        this.completedRides = 0;
+        this.streetNameObjects = [];
+        this.buildingObjects = [];
+        this.roadObjects = [];
+        this.landmarkObjects = [];
         
-        // Game settings
-        this.unitTypes = {
-            rider: { 
-                color: 0x00ff00, 
-                size: 18,
-                speed: 0, // Riders don't move
-                type: 'rider'
-            },
-            driver: { 
-                color: 0x0066ff, 
-                size: 24,
-                speed: 100,
-                type: 'driver',
-                status: 'idle' // idle, going_to_rider, on_ride
-            }
-        };
+        // Street names arrays
+        this.streetNames = [
+            'Main St', 'Broadway', 'Oak Ave', 'Pine St', 'Elm St', 'Maple Ave',
+            'Cedar St', 'First St', 'Second St', 'Third St', 'Fourth St', 'Fifth St',
+            'Park Ave', 'Central St'
+        ];
         
-        // Ride settings
-        this.rideSettings = {
-            baseFare: 10,
-            distanceMultiplier: 0.5,
-            ratingBonus: 0.1
-        };
+        this.avenueNames = [
+            'First Ave', 'Second Ave', 'Third Ave', 'Fourth Ave', 'Fifth Ave',
+            'Central Ave', 'North Ave', 'South Ave', 'East Ave', 'West Ave',
+            'Grand Ave', 'Union Ave', 'Liberty Ave', 'Washington Ave', 'Lincoln Ave', 'Jefferson Ave'
+        ];
+        
+        // Landmarks
+        this.landmarks = [
+            { name: 'Downtown', x: 1200, y: 800, icon: '🏢' },
+            { name: 'Airport', x: 200, y: 200, icon: '✈️' },
+            { name: 'Mall', x: 2200, y: 200, icon: '🛍️' },
+            { name: 'Station', x: 200, y: 1400, icon: '🚉' },
+            { name: 'Hospital', x: 2200, y: 1400, icon: '🏥' },
+            { name: 'University', x: 1200, y: 200, icon: '🎓' }
+        ];
+        
+        // Input state
+        this.isDragging = false;
+        this.dragStart = { x: 0, y: 0 };
+        this.cameraStart = { x: 0, y: 0 };
     }
-    
+
     preload() {
-        console.log('Traffic Simulator loading...');
+        // No external assets needed - using dynamic graphics
     }
-    
+
     create() {
-        const { width, height } = this.cameras.main;
+        console.log('🚗 Traffic Simulator - Creating game world...');
         
-        // Define a larger world so we can scroll the camera
-        this.worldWidth = 2400;
-        this.worldHeight = 1600;
-        this.cameras.main.setBounds(0, 0, this.worldWidth, this.worldHeight);
-        this.cameras.main.setZoom(1);
-        
-        // Start camera at center of world
-        this.cameras.main.centerOn(this.worldWidth / 2, this.worldHeight / 2);
+        // Set world bounds
+        this.physics.world.setBounds(0, 0, this.worldWidth, this.worldHeight);
         
         // Create city background
         this.createCityBackground();
-        console.log('City background created with roads and buildings');
         
-        // Test: Create a simple visible rectangle to verify rendering
-        const testRect = this.add.rectangle(100, 100, 50, 50, 0xff0000);
-        testRect.setStrokeStyle(3, 0xffffff);
-        console.log('Test rectangle created at (100, 100)');
+        // Create street names
+        this.createStreetNames();
         
-        // Set up input handlers
+        // Create landmarks
+        this.createLandmarks();
+        
+        // Setup input handlers
         this.setupInputHandlers();
         
-        // Set up UI handlers
+        // Setup UI event handlers
         this.setupUIHandlers();
         
-        // Update UI
-        this.updateUI();
+        // Center camera on world center
+        this.cameras.main.centerOn(this.worldWidth / 2, this.worldHeight / 2);
         
-        // Mini map setup (scale to world, not viewport)
-        const miniCanvas = document.getElementById('minimap-canvas');
-        this.minimapCtx = miniCanvas.getContext('2d');
-        this.minimapScaleX = 240 / this.worldWidth;
-        this.minimapScaleY = 160 / this.worldHeight;
-        this.simStartMs = Date.now();
-        this.rideDurationsMs = [];
-
-        // Click-to-pan on minimap
-        miniCanvas.addEventListener('click', (e) => {
-            const rect = miniCanvas.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-            const worldX = mx / this.minimapScaleX;
-            const worldY = my / this.minimapScaleY;
-            console.log(`Mini-map clicked at canvas (${mx}, ${my}) -> world (${worldX}, ${worldY})`);
-            this.centerCameraOn(worldX, worldY);
-        });
+        // Set camera bounds
+        this.cameras.main.setBounds(0, 0, this.worldWidth, this.worldHeight);
         
-        // Add zoom controls
-        this.setupZoomControls();
-        
-        // Start ride request timer
+        // Start auto ride generation
         this.time.addEvent({
-            delay: 5000, // Every 5 seconds
-            callback: this.spawnRandomRideRequest,
+            delay: 5000,
+            callback: this.autoGenerateRideRequest,
             callbackScope: this,
             loop: true
         });
         
-        console.log('Traffic Simulator initialized!');
+        console.log('✅ Game world created successfully!');
     }
-    
+
     createCityBackground() {
-        const width = this.worldWidth;
-        const height = this.worldHeight;
-        console.log(`Creating city background: ${width}x${height}`);
-
-        // Create a simple background first
-        const bg = this.add.rectangle(0, 0, width, height, 0x1a1a1a);
-        bg.setOrigin(0, 0);
-        console.log('Background rectangle created');
-
-        // Create roads as separate rectangles for better visibility
-        this.roadWidth = 32;
-        const roadColor = 0x4a5a6a;
+        console.log('🏗️ Creating city background...');
         
-        // Road grid positions
-        this.roadY = [];
-        this.roadX = [];
-        this.roadObjects = []; // Store road objects for viewport culling
+        // Create roads (14 horizontal, 16 vertical)
+        this.createRoads();
         
-        // Horizontal roads
-        for (let y = 120; y < height - 120; y += 100) {
-            this.roadY.push(y);
-            const road = this.add.rectangle(width/2, y, width, this.roadWidth, roadColor);
-            road.setOrigin(0.5, 0.5);
-            this.roadObjects.push(road);
-        }
+        // Create buildings
+        this.createBuildings();
         
-        // Vertical roads
-        for (let x = 120; x < width - 120; x += 140) {
-            this.roadX.push(x);
-            const road = this.add.rectangle(x, height/2, this.roadWidth, height, roadColor);
-            road.setOrigin(0.5, 0.5);
-            this.roadObjects.push(road);
-        }
-        console.log(`Created ${this.roadY.length} horizontal roads and ${this.roadX.length} vertical roads`);
-
-        // Create street names
-        this.createStreetNames();
-        console.log('Street names created');
-
-        // Create buildings as separate rectangles
-        this.createBuildingsGrid(width, height);
-        console.log(`Created ${this.buildings.length} buildings`);
-
-        // Landmarks (named POIs)
-        this.createLandmarks();
-        
-        // Add some initial drivers and riders for testing
-        this.spawnDriver();
-        this.spawnDriver();
-        this.spawnRider();
-        this.spawnRider();
-        console.log('Spawned initial test units');
-        
-        // Add a test rectangle at center to verify graphics are working
-        const testRect = this.add.rectangle(this.worldWidth / 2, this.worldHeight / 2, 100, 100, 0xff0000);
-        testRect.setStrokeStyle(5, 0xffffff);
-        console.log('Added test rectangle at center');
+        console.log(`✅ City created: ${this.roadObjects.length} roads, ${this.buildingObjects.length} buildings`);
     }
 
-    createBuildingsGrid(width, height) {
-        const blockColor = 0x8f9ca3; // brighter buildings
-        const borderColor = 0x6d7d8e; // brighter borders
-        const xs = [0, ...this.roadX, width];
-        const ys = [0, ...this.roadY, height];
-        this.buildings = [];
-        this.buildingObjects = []; // Store building objects for viewport culling
+    createRoads() {
+        // Horizontal roads (14 roads)
+        for (let i = 0; i < 14; i++) {
+            const y = 100 + i * 100; // 100px spacing
+            const road = this.add.rectangle(this.worldWidth / 2, y, this.worldWidth, 32, 0x4a5a6a);
+            road.setDepth(1);
+            this.roadObjects.push(road);
+        }
+        
+        // Vertical roads (16 roads)
+        for (let i = 0; i < 16; i++) {
+            const x = 100 + i * 140; // 140px spacing
+            const road = this.add.rectangle(x, this.worldHeight / 2, 32, this.worldHeight, 0x4a5a6a);
+            road.setDepth(1);
+            this.roadObjects.push(road);
+        }
+    }
 
-        // For each block (between two roads), place a few building rectangles
-        for (let i = 0; i < ys.length - 1; i++) {
-            for (let j = 0; j < xs.length - 1; j++) {
-                // Compute block inner area excluding half road widths
-                const x0 = j === 0 ? 0 : xs[j] + this.roadWidth / 2;
-                const x1 = j === xs.length - 2 ? width : xs[j + 1] - this.roadWidth / 2;
-                const y0 = i === 0 ? 0 : ys[i] + this.roadWidth / 2;
-                const y1 = i === ys.length - 2 ? height : ys[i + 1] - this.roadWidth / 2;
-                const blockW = x1 - x0;
-                const blockH = y1 - y0;
-                if (blockW < 60 || blockH < 60) continue;
-
-                // Create 2–3 buildings inside the block
-                const cols = 2;
-                const rows = 2;
-                for (let r = 0; r < rows; r++) {
-                    for (let c = 0; c < cols; c++) {
-                        const pad = 8;
-                        const bw = blockW / cols - pad * 2;
-                        const bh = blockH / rows - pad * 2;
-                        const bx = x0 + c * (blockW / cols) + pad + Math.random() * 6;
-                        const by = y0 + r * (blockH / rows) + pad + Math.random() * 6;
-                        
-                        // Create building as separate rectangle
-                        const building = this.add.rectangle(bx + bw/2, by + bh/2, bw, bh, blockColor);
-                        building.setStrokeStyle(1, borderColor);
-                        this.buildings.push({ x: bx, y: by, w: bw, h: bh });
-                        this.buildingObjects.push(building);
-                    }
-                }
+    createBuildings() {
+        // Create buildings in grid pattern between roads
+        for (let x = 50; x < this.worldWidth - 50; x += 120) {
+            for (let y = 50; y < this.worldHeight - 50; y += 120) {
+                // Skip if on road
+                if (this.isOnRoad(x, y)) continue;
+                
+                const width = 60 + Math.random() * 60; // 60-120px width
+                const height = 60 + Math.random() * 60; // 60-120px height
+                
+                const building = this.add.rectangle(x, y, width, height, 0x8f9ca3);
+                building.setStrokeStyle(2, 0x6d7d8e);
+                building.setDepth(2);
+                this.buildingObjects.push(building);
             }
         }
     }
-    
-    createLandmarks() {
-        const width = this.worldWidth;
-        const height = this.worldHeight;
+
+    isOnRoad(x, y) {
+        // Check if position is on horizontal road
+        for (let i = 0; i < 14; i++) {
+            const roadY = 100 + i * 100;
+            if (Math.abs(y - roadY) < 20) return true;
+        }
         
-        // Create landmarks (pickup/dropoff points)
-        const landmarks = [
-            { x: 150, y: 150, name: 'Downtown', type: 'pickup' },
-            { x: 300, y: 200, name: 'Airport', type: 'pickup' },
-            { x: 500, y: 100, name: 'Mall', type: 'pickup' },
-            { x: 700, y: 250, name: 'Station', type: 'pickup' },
-            { x: 200, y: 400, name: 'Hospital', type: 'pickup' },
-            { x: 450, y: 450, name: 'University', type: 'pickup' }
-        ];
+        // Check if position is on vertical road
+        for (let i = 0; i < 16; i++) {
+            const roadX = 100 + i * 140;
+            if (Math.abs(x - roadX) < 20) return true;
+        }
         
-        this.landmarkObjects = []; // Store landmark objects for viewport culling
-        landmarks.forEach(landmark => {
-            const marker = this.add.circle(landmark.x, landmark.y, 12, 0xff6b6b);
-            marker.setStrokeStyle(3, 0xffffff);
-            marker.setData('landmark', landmark);
+        return false;
+    }
+
+    createStreetNames() {
+        console.log('🏷️ Creating street names...');
+        
+        // Horizontal street names (3 per street: left, right, center)
+        for (let i = 0; i < 14; i++) {
+            const y = 100 + i * 100;
+            const streetName = this.streetNames[i] || `Street ${i + 1}`;
             
-            // Add label with background
-            const label = this.add.text(landmark.x, landmark.y + 20, landmark.name, {
+            // Left edge
+            const leftName = this.add.text(50, y, streetName, {
+                fontSize: '14px',
+                fill: '#ffffff',
+                backgroundColor: '#000000',
+                padding: { x: 4, y: 2 }
+            });
+            leftName.setDepth(1000);
+            this.streetNameObjects.push(leftName);
+            
+            // Right edge
+            const rightName = this.add.text(this.worldWidth - 50, y, streetName, {
+                fontSize: '14px',
+                fill: '#ffffff',
+                backgroundColor: '#000000',
+                padding: { x: 4, y: 2 }
+            });
+            rightName.setDepth(1000);
+            this.streetNameObjects.push(rightName);
+            
+            // Center
+            const centerName = this.add.text(this.worldWidth / 2, y, streetName, {
+                fontSize: '14px',
+                fill: '#ffffff',
+                backgroundColor: '#000000',
+                padding: { x: 4, y: 2 }
+            });
+            centerName.setDepth(1000);
+            this.streetNameObjects.push(centerName);
+        }
+        
+        // Vertical avenue names (3 per avenue: top, bottom, center)
+        for (let i = 0; i < 16; i++) {
+            const x = 100 + i * 140;
+            const avenueName = this.avenueNames[i] || `Avenue ${i + 1}`;
+            
+            // Top edge
+            const topName = this.add.text(x, 50, avenueName, {
+                fontSize: '14px',
+                fill: '#ffffff',
+                backgroundColor: '#000000',
+                padding: { x: 4, y: 2 }
+            });
+            topName.setDepth(1000);
+            this.streetNameObjects.push(topName);
+            
+            // Bottom edge
+            const bottomName = this.add.text(x, this.worldHeight - 50, avenueName, {
+                fontSize: '14px',
+                fill: '#ffffff',
+                backgroundColor: '#000000',
+                padding: { x: 4, y: 2 }
+            });
+            bottomName.setDepth(1000);
+            this.streetNameObjects.push(bottomName);
+            
+            // Center
+            const centerName = this.add.text(x, this.worldHeight / 2, avenueName, {
+                fontSize: '14px',
+                fill: '#ffffff',
+                backgroundColor: '#000000',
+                padding: { x: 4, y: 2 }
+            });
+            centerName.setDepth(1000);
+            this.streetNameObjects.push(centerName);
+        }
+        
+        console.log(`✅ Created ${this.streetNameObjects.length} street name labels`);
+    }
+
+    createLandmarks() {
+        console.log('🏛️ Creating landmarks...');
+        
+        this.landmarks.forEach(landmark => {
+            const landmarkObj = this.add.text(landmark.x, landmark.y, landmark.icon, {
+                fontSize: '24px',
+                fill: '#f39c12'
+            });
+            landmarkObj.setDepth(1001);
+            
+            const label = this.add.text(landmark.x, landmark.y + 30, landmark.name, {
                 fontSize: '12px',
                 fill: '#ffffff',
                 backgroundColor: '#000000',
-                padding: { x: 4, y: 2 },
-                align: 'center'
+                padding: { x: 4, y: 2 }
             });
-            label.setOrigin(0.5);
+            label.setDepth(1001);
             
-            this.landmarkObjects.push({ marker, label });
+            this.landmarkObjects.push(landmarkObj, label);
         });
+        
+        console.log(`✅ Created ${this.landmarks.length} landmarks`);
     }
-    
-    createStreetNames() {
-        // Street name arrays
-        const streetNames = [
-            'Main St', 'Broadway', 'Oak Ave', 'Pine St', 'Elm St', 'Maple Ave',
-            'Cedar St', 'First St', 'Second St', 'Third St', 'Fourth St', 'Fifth St',
-            'Park Ave', 'Washington St', 'Lincoln Ave', 'Jefferson St', 'Madison Ave',
-            'Roosevelt St', 'Kennedy Ave', 'Church St', 'School St', 'Market St',
-            'Commerce St', 'Industrial Ave', 'Residential St', 'Garden Ave'
-        ];
-        
-        const avenueNames = [
-            'First Ave', 'Second Ave', 'Third Ave', 'Fourth Ave', 'Fifth Ave',
-            'Central Ave', 'North Ave', 'South Ave', 'East Ave', 'West Ave',
-            'Grand Ave', 'Royal Ave', 'Victory Ave', 'Liberty Ave', 'Freedom Ave',
-            'Peace Ave', 'Harmony Ave', 'Unity Ave', 'Progress Ave', 'Future Ave'
-        ];
-        
-        this.streetNameObjects = []; // Store street name objects for viewport culling
-        
-        // Add names to horizontal roads (streets)
-        this.roadY.forEach((y, index) => {
-            if (index < streetNames.length) {
-                const streetName = streetNames[index];
-                
-                // Add street name at the left edge of the road
-                const nameText = this.add.text(50, y, streetName, {
-                    fontSize: '14px',
-                    fill: '#ffffff',
-                    backgroundColor: '#000000',
-                    padding: { x: 6, y: 3 },
-                    align: 'center',
-                    fontStyle: 'bold'
-                });
-                nameText.setOrigin(0, 0.5);
-                nameText.setDepth(1000); // Ensure street names are on top
-                
-                this.streetNameObjects.push(nameText);
-                
-                // Also add street name at the right edge
-                const nameTextRight = this.add.text(this.worldWidth - 50, y, streetName, {
-                    fontSize: '14px',
-                    fill: '#ffffff',
-                    backgroundColor: '#000000',
-                    padding: { x: 6, y: 3 },
-                    align: 'center',
-                    fontStyle: 'bold'
-                });
-                nameTextRight.setOrigin(1, 0.5);
-                nameTextRight.setDepth(1000);
-                
-                this.streetNameObjects.push(nameTextRight);
-                
-                // Add street name in the center for better visibility
-                const nameTextCenter = this.add.text(this.worldWidth / 2, y, streetName, {
-                    fontSize: '14px',
-                    fill: '#ffffff',
-                    backgroundColor: '#000000',
-                    padding: { x: 6, y: 3 },
-                    align: 'center',
-                    fontStyle: 'bold'
-                });
-                nameTextCenter.setOrigin(0.5, 0.5);
-                nameTextCenter.setDepth(1000);
-                
-                this.streetNameObjects.push(nameTextCenter);
-            }
-        });
-        
-        // Add names to vertical roads (avenues)
-        this.roadX.forEach((x, index) => {
-            if (index < avenueNames.length) {
-                const avenueName = avenueNames[index];
-                
-                // Add avenue name at the top of the road
-                const nameText = this.add.text(x, 50, avenueName, {
-                    fontSize: '14px',
-                    fill: '#ffffff',
-                    backgroundColor: '#000000',
-                    padding: { x: 6, y: 3 },
-                    align: 'center',
-                    fontStyle: 'bold'
-                });
-                nameText.setOrigin(0.5, 0);
-                nameText.setDepth(1000);
-                
-                this.streetNameObjects.push(nameText);
-                
-                // Also add avenue name at the bottom
-                const nameTextBottom = this.add.text(x, this.worldHeight - 50, avenueName, {
-                    fontSize: '14px',
-                    fill: '#ffffff',
-                    backgroundColor: '#000000',
-                    padding: { x: 6, y: 3 },
-                    align: 'center',
-                    fontStyle: 'bold'
-                });
-                nameTextBottom.setOrigin(0.5, 1);
-                nameTextBottom.setDepth(1000);
-                
-                this.streetNameObjects.push(nameTextBottom);
-                
-                // Add avenue name in the center for better visibility
-                const nameTextCenter = this.add.text(x, this.worldHeight / 2, avenueName, {
-                    fontSize: '14px',
-                    fill: '#ffffff',
-                    backgroundColor: '#000000',
-                    padding: { x: 6, y: 3 },
-                    align: 'center',
-                    fontStyle: 'bold'
-                });
-                nameTextCenter.setOrigin(0.5, 0.5);
-                nameTextCenter.setDepth(1000);
-                
-                this.streetNameObjects.push(nameTextCenter);
-            }
-        });
-        
-        console.log(`Created ${this.streetNameObjects.length} street name labels`);
-    }
-    
+
     setupInputHandlers() {
-        // Initialize dragging state
-        this.isDragging = false;
-        this.dragStartX = 0;
-        this.dragStartY = 0;
-        this.cameraStartX = 0;
-        this.cameraStartY = 0;
-        
-        // Left-click and drag to pan camera (more intuitive)
+        // Left-click drag for camera panning
         this.input.on('pointerdown', (pointer) => {
             if (pointer.leftButtonDown()) {
-                // Check if clicking on UI elements (don't drag if clicking buttons)
-                const target = pointer.event.target;
-                if (target.tagName === 'BUTTON' || target.closest('button')) {
-                    return; // Don't start dragging if clicking UI buttons
-                }
-                
                 this.isDragging = true;
-                this.dragStartX = pointer.x;
-                this.dragStartY = pointer.y;
-                this.cameraStartX = this.cameras.main.x;
-                this.cameraStartY = this.cameras.main.y;
-                
-                // Change cursor to indicate dragging
-                document.body.style.cursor = 'grabbing';
-                
-                console.log(`Started dragging from (${this.dragStartX}, ${this.dragStartY})`);
+                this.dragStart.x = pointer.x;
+                this.dragStart.y = pointer.y;
+                this.cameraStart.x = this.cameras.main.scrollX;
+                this.cameraStart.y = this.cameras.main.scrollY;
+                this.game.canvas.style.cursor = 'grabbing';
             }
         });
         
         this.input.on('pointermove', (pointer) => {
-            if (this.isDragging && pointer.leftButtonDown()) {
-                const deltaX = pointer.x - this.dragStartX;
-                const deltaY = pointer.y - this.dragStartY;
-                const newX = this.cameraStartX - deltaX;
-                const newY = this.cameraStartY - deltaY;
+            if (this.isDragging && pointer.isDown) {
+                const deltaX = this.dragStart.x - pointer.x;
+                const deltaY = this.dragStart.y - pointer.y;
                 
-                // Clamp to world bounds
-                const clampedX = Phaser.Math.Clamp(newX, 0, this.worldWidth - this.cameras.main.width);
-                const clampedY = Phaser.Math.Clamp(newY, 0, this.worldHeight - this.cameras.main.height);
-                
-                this.cameras.main.setPosition(clampedX, clampedY);
-                this.updateUI();
-                
-                console.log(`Dragging to (${Math.round(clampedX)}, ${Math.round(clampedY)})`);
+                this.cameras.main.setScroll(
+                    this.cameraStart.x + deltaX,
+                    this.cameraStart.y + deltaY
+                );
             }
         });
         
-        this.input.on('pointerup', (pointer) => {
-            if (this.isDragging) {
-                console.log('Stopped dragging');
-                this.isDragging = false;
-                
-                // Reset cursor
-                document.body.style.cursor = 'default';
-            }
+        this.input.on('pointerup', () => {
+            this.isDragging = false;
+            this.game.canvas.style.cursor = 'grab';
         });
         
-        // Right-click for spawning units at clicked location
+        // Mouse wheel zoom
+        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
+            const zoomFactor = deltaY > 0 ? 0.9 : 1.1;
+            const newZoom = Phaser.Math.Clamp(this.cameras.main.zoom * zoomFactor, 0.5, 3.0);
+            this.cameras.main.setZoom(newZoom);
+        });
+        
+        // Keyboard controls
+        this.input.keyboard.on('keydown-PLUS', () => {
+            const newZoom = Phaser.Math.Clamp(this.cameras.main.zoom * 1.1, 0.5, 3.0);
+            this.cameras.main.setZoom(newZoom);
+        });
+        
+        this.input.keyboard.on('keydown-MINUS', () => {
+            const newZoom = Phaser.Math.Clamp(this.cameras.main.zoom * 0.9, 0.5, 3.0);
+            this.cameras.main.setZoom(newZoom);
+        });
+        
+        this.input.keyboard.on('keydown-ZERO', () => {
+            this.cameras.main.setZoom(1.0);
+        });
+        
+        // Right-click to spawn driver
         this.input.on('pointerdown', (pointer) => {
             if (pointer.rightButtonDown()) {
-                this.handleRightClick(pointer);
+                const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+                this.spawnDriver(worldPoint.x, worldPoint.y);
             }
         });
     }
-    
-    handleLeftClick(pointer) {
-        // Left-click is now used for dragging, so this function is not needed
-        // But keeping it for potential future use
-    }
-    
-    handleRightClick(pointer) {
-        const worldX = pointer.worldX;
-        const worldY = pointer.worldY;
-        
-        // Spawn a driver at right-clicked location
-        const driver = this.createDriver(worldX, worldY);
-        this.drivers.push(driver);
-        
-        console.log(`Spawned driver at right-click location (${worldX}, ${worldY})`);
-    }
-    
-    getLandmarkAt(x, y) {
-        const graphics = this.children.list;
-        for (let child of graphics) {
-            if (child.getData('landmark')) {
-                const distance = Phaser.Math.Distance.Between(x, y, child.x, child.y);
-                if (distance < 20) {
-                    return child.getData('landmark');
-                }
-            }
-        }
-        return null;
-    }
-    
+
     setupUIHandlers() {
-        // Spawn rider button
         document.getElementById('spawn-rider').addEventListener('click', () => {
             this.spawnRider();
         });
         
-        // Spawn driver button
         document.getElementById('spawn-driver').addEventListener('click', () => {
             this.spawnDriver();
         });
         
-        // Request ride button
         document.getElementById('request-ride').addEventListener('click', () => {
             this.createRideRequest();
         });
+        
+        // Mini-map click handler
+        const minimapCanvas = document.getElementById('minimap-canvas');
+        minimapCanvas.addEventListener('click', (event) => {
+            const rect = minimapCanvas.getBoundingClientRect();
+            const x = (event.clientX - rect.left) / rect.width * this.worldWidth;
+            const y = (event.clientY - rect.top) / rect.height * this.worldHeight;
+            this.centerCameraOn(x, y);
+        });
     }
-    
+
     spawnRider() {
-        const x = Phaser.Math.Between(50, this.worldWidth - 50);
-        const y = Phaser.Math.Between(50, this.worldHeight - 50);
+        const x = 200 + Math.random() * (this.worldWidth - 400);
+        const y = 200 + Math.random() * (this.worldHeight - 400);
         
-        const rider = this.createRider(x, y);
+        const rider = this.add.rectangle(x, y, 18, 18, 0x2ecc71);
+        rider.setStrokeStyle(2, 0x27ae60);
+        rider.setDepth(10);
+        
+        // Add rider icon
+        const icon = this.add.text(x, y, '🏍️', {
+            fontSize: '12px'
+        });
+        icon.setDepth(11);
+        icon.setOrigin(0.5);
+        
+        const riderData = {
+            x: x,
+            y: y,
+            status: 'idle',
+            icon: icon
+        };
+        
+        rider.setData('riderData', riderData);
         this.riders.push(rider);
+        this.totalAgents++;
         
-        console.log(`Spawned rider at (${x}, ${y})`);
+        console.log(`🏍️ Spawned rider at (${Math.round(x)}, ${Math.round(y)})`);
     }
-    
-    spawnDriver() {
-        const x = Phaser.Math.Between(50, this.worldWidth - 50);
-        const y = Phaser.Math.Between(50, this.worldHeight - 50);
+
+    spawnDriver(x = null, y = null) {
+        if (x === null) {
+            x = 200 + Math.random() * (this.worldWidth - 400);
+            y = 200 + Math.random() * (this.worldHeight - 400);
+        }
         
-        const driver = this.createDriver(x, y);
+        const driver = this.add.rectangle(x, y, 24, 24, 0x3498db);
+        driver.setStrokeStyle(2, 0x2980b9);
+        driver.setDepth(10);
+        
+        // Add driver icon
+        const icon = this.add.text(x, y, '🚗', {
+            fontSize: '16px'
+        });
+        icon.setDepth(11);
+        icon.setOrigin(0.5);
+        
+        const driverData = {
+            x: x,
+            y: y,
+            status: 'idle',
+            speed: 100 + Math.random() * 50, // 100-150 pixels per second
+            icon: icon
+        };
+        
+        driver.setData('driverData', driverData);
         this.drivers.push(driver);
+        this.totalAgents++;
         
-        console.log(`Spawned driver at (${x}, ${y}) - Total drivers: ${this.drivers.length}`);
+        console.log(`🚗 Spawned driver at (${Math.round(x)}, ${Math.round(y)})`);
     }
-    
-    createRider(x, y) {
-        const riderData = this.unitTypes.rider;
-        
-        const rider = this.add.rectangle(x, y, riderData.size, riderData.size, riderData.color);
-        rider.setStrokeStyle(2, 0xffffff);
-        rider.setData('type', 'rider');
-        rider.setData('status', 'waiting'); // waiting, in_ride, completed
-        rider.setData('currentRide', null);
-        
-        // Add rider icon - larger and more visible
-        const icon = this.add.text(x, y, '👤', { fontSize: '16px' });
-        icon.setOrigin(0.5);
-        rider.setData('icon', icon);
-        
-        return rider;
-    }
-    
-    createDriver(x, y) {
-        const driverData = this.unitTypes.driver;
-        
-        const driver = this.add.rectangle(x, y, driverData.size, driverData.size, driverData.color);
-        driver.setStrokeStyle(2, 0xffffff);
-        driver.setData('type', 'driver');
-        driver.setData('status', 'idle'); // idle, going_to_rider, on_ride
-        driver.setData('currentRide', null);
-        driver.setData('target', null);
-        driver.setData('speed', driverData.speed); // FIX: Set the speed data!
-        
-        // Add driver icon - larger and more visible
-        const icon = this.add.text(x, y, '🚗', { fontSize: '16px' });
-        icon.setOrigin(0.5);
-        driver.setData('icon', icon);
-        
-        return driver;
-    }
-    
+
     createRideRequest() {
         if (this.riders.length === 0) {
-            alert('Spawn some riders first!');
+            alert('No riders available! Spawn some riders first.');
             return;
         }
         
-        // Find a waiting rider
-        const waitingRiders = this.riders.filter(rider => rider.getData('status') === 'waiting');
-        if (waitingRiders.length === 0) {
+        // Find idle riders
+        const idleRiders = this.riders.filter(rider => {
+            const data = rider.getData('riderData');
+            return data.status === 'idle';
+        });
+        
+        if (idleRiders.length === 0) {
             alert('All riders are busy!');
             return;
         }
         
-        const rider = Phaser.Utils.Array.GetRandom(waitingRiders);
-        const pickupX = rider.x;
-        const pickupY = rider.y;
+        // Pick random idle rider
+        const rider = idleRiders[Math.floor(Math.random() * idleRiders.length)];
+        const riderData = rider.getData('riderData');
         
-        // Generate random destination
-        const dropoffX = Phaser.Math.Between(50, this.worldWidth - 50);
-        const dropoffY = Phaser.Math.Between(50, this.worldHeight - 50);
+        // Generate pickup and dropoff points
+        const pickupX = riderData.x;
+        const pickupY = riderData.y;
         
-        // Calculate fare based on distance
+        const dropoffX = 200 + Math.random() * (this.worldWidth - 400);
+        const dropoffY = 200 + Math.random() * (this.worldHeight - 400);
+        
+        // Calculate fare
         const distance = Phaser.Math.Distance.Between(pickupX, pickupY, dropoffX, dropoffY);
-        const fare = Math.round(this.rideSettings.baseFare + (distance * this.rideSettings.distanceMultiplier));
+        const fare = Math.round(distance * 0.1);
         
+        // Create pickup marker
+        const pickupMarker = this.add.circle(pickupX, pickupY, 20, 0xf1c40f);
+        pickupMarker.setStrokeStyle(3, 0xe67e22);
+        pickupMarker.setDepth(5);
+        
+        const pickupText = this.add.text(pickupX, pickupY, `$${fare}`, {
+            fontSize: '12px',
+            fill: '#000000',
+            fontWeight: 'bold'
+        });
+        pickupText.setDepth(6);
+        pickupText.setOrigin(0.5);
+        
+        // Create dropoff marker
+        const dropoffMarker = this.add.circle(dropoffX, dropoffY, 15, 0x2ecc71);
+        dropoffMarker.setStrokeStyle(3, 0x27ae60);
+        dropoffMarker.setDepth(5);
+        
+        const dropoffText = this.add.text(dropoffX, dropoffY, '🎯', {
+            fontSize: '12px'
+        });
+        dropoffText.setDepth(6);
+        dropoffText.setOrigin(0.5);
+        
+        // Create ride request
         const rideRequest = {
             id: Date.now(),
             rider: rider,
@@ -563,70 +472,45 @@ class TrafficSimulator extends Phaser.Scene {
             dropoffX: dropoffX,
             dropoffY: dropoffY,
             fare: fare,
-            status: 'requested', // requested, assigned, in_progress, completed
+            pickupMarker: pickupMarker,
+            pickupText: pickupText,
+            dropoffMarker: dropoffMarker,
+            dropoffText: dropoffText,
             assignedDriver: null,
             startTime: Date.now()
         };
         
         this.rideRequests.push(rideRequest);
-        rider.setData('currentRide', rideRequest);
-        rider.setData('status', 'requested');
-        
-        // Visual indicator for ride request
-        this.createRideRequestIndicator(rideRequest);
-        
-        // Notify drivers
-        this.notifyDriversOfRideRequest(rideRequest);
-        
         this.activeRides++;
-        this.updateUI();
         
-        console.log(`Created ride request: ${fare} fare, distance: ${Math.round(distance)}`);
+        // Update rider status
+        riderData.status = 'waiting_for_pickup';
+        
+        // Assign driver
+        this.assignDriverToRide(rideRequest);
+        
+        console.log(`📱 Created ride request: $${fare} fare, distance: ${Math.round(distance)}px`);
     }
-    
-    createRideRequestIndicator(rideRequest) {
-        // Create pickup marker
-        const pickupMarker = this.add.circle(rideRequest.pickupX, rideRequest.pickupY, 12, 0xffd700);
-        pickupMarker.setStrokeStyle(3, 0xff6b6b);
-        pickupMarker.setData('rideRequest', rideRequest);
-        pickupMarker.setData('type', 'pickup');
-        
-        // Create dropoff marker
-        const dropoffMarker = this.add.circle(rideRequest.dropoffX, rideRequest.dropoffY, 10, 0x00ff00);
-        dropoffMarker.setStrokeStyle(2, 0xffffff);
-        dropoffMarker.setData('rideRequest', rideRequest);
-        dropoffMarker.setData('type', 'dropoff');
-        
-        // Add fare text
-        const fareText = this.add.text(rideRequest.pickupX, rideRequest.pickupY - 20, `$${rideRequest.fare}`, {
-            fontSize: '12px',
-            fill: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 4, y: 2 }
+
+    assignDriverToRide(rideRequest) {
+        // Find idle drivers
+        const idleDrivers = this.drivers.filter(driver => {
+            const data = driver.getData('driverData');
+            return data.status === 'idle';
         });
-        fareText.setOrigin(0.5);
         
-        rideRequest.pickupMarker = pickupMarker;
-        rideRequest.dropoffMarker = dropoffMarker;
-        rideRequest.fareText = fareText;
-    }
-    
-    notifyDriversOfRideRequest(rideRequest) {
-        // Find available drivers
-        const availableDrivers = this.drivers.filter(driver => driver.getData('status') === 'idle');
-        
-        if (availableDrivers.length === 0) {
+        if (idleDrivers.length === 0) {
             console.log('No available drivers for ride request');
             return;
         }
         
-        // Calculate distances and assign closest driver
+        // Find closest driver
         let closestDriver = null;
         let closestDistance = Infinity;
         
-        availableDrivers.forEach(driver => {
+        idleDrivers.forEach(driver => {
             const distance = Phaser.Math.Distance.Between(
-                driver.x, driver.y, 
+                driver.x, driver.y,
                 rideRequest.pickupX, rideRequest.pickupY
             );
             
@@ -637,560 +521,359 @@ class TrafficSimulator extends Phaser.Scene {
         });
         
         if (closestDriver) {
-            this.assignRideToDriver(rideRequest, closestDriver);
+            rideRequest.assignedDriver = closestDriver;
+            const driverData = closestDriver.getData('driverData');
+            driverData.status = 'going_to_rider';
+            
+            // Move driver to pickup
+            this.moveDriverToPickup(rideRequest);
+            
+            console.log(`🚗 Assigned driver to ride request ${rideRequest.id}`);
         }
     }
-    
-    assignRideToDriver(rideRequest, driver) {
-        rideRequest.assignedDriver = driver;
-        rideRequest.status = 'assigned';
+
+    moveDriverToPickup(rideRequest) {
+        const driver = rideRequest.assignedDriver;
+        const driverData = driver.getData('driverData');
         
-        driver.setData('currentRide', rideRequest);
-        driver.setData('status', 'going_to_rider');
-        driver.setData('target', { x: rideRequest.pickupX, y: rideRequest.pickupY });
-        
-        // Move driver to pickup location
-        this.moveDriverToPickup(driver, rideRequest);
-        
-        console.log(`Assigned ride to driver, fare: $${rideRequest.fare}`);
-    }
-    
-    moveDriverToPickup(driver, rideRequest) {
         const distance = Phaser.Math.Distance.Between(
-            driver.x, driver.y, 
+            driver.x, driver.y,
             rideRequest.pickupX, rideRequest.pickupY
         );
         
-        const speed = driver.getData('speed');
-        const duration = (distance / speed) * 1000; // Convert to milliseconds
-        
-        console.log(`Driver moving to pickup: distance=${Math.round(distance)}, speed=${speed}, duration=${Math.round(duration)}ms`);
+        const duration = (distance / driverData.speed) * 1000; // Convert to milliseconds
         
         this.tweens.add({
             targets: driver,
             x: rideRequest.pickupX,
             y: rideRequest.pickupY,
             duration: duration,
-            ease: 'Power2',
+            ease: 'Linear',
             onComplete: () => {
-                console.log('Driver reached pickup location!');
-                this.pickupRider(driver, rideRequest);
+                this.pickupRider(rideRequest);
             }
         });
         
-        // Also move the icon
+        // Move driver icon
         this.tweens.add({
-            targets: driver.getData('icon'),
+            targets: driverData.icon,
             x: rideRequest.pickupX,
             y: rideRequest.pickupY,
             duration: duration,
-            ease: 'Power2'
+            ease: 'Linear'
         });
     }
-    
-    pickupRider(driver, rideRequest) {
-        console.log('Driver picked up rider!');
+
+    pickupRider(rideRequest) {
+        const driver = rideRequest.assignedDriver;
+        const driverData = driver.getData('driverData');
+        const riderData = rideRequest.rider.getData('riderData');
         
         // Update statuses
-        driver.setData('status', 'on_ride');
-        rideRequest.rider.setData('status', 'in_ride');
-        rideRequest.status = 'in_progress';
+        driverData.status = 'on_ride';
+        riderData.status = 'in_ride';
         
-        // Move both driver and rider to dropoff
-        this.moveToDropoff(driver, rideRequest);
+        // Hide pickup marker
+        rideRequest.pickupMarker.setVisible(false);
+        rideRequest.pickupText.setVisible(false);
+        
+        // Move to dropoff
+        this.moveToDropoff(rideRequest);
+        
+        console.log(`🚗 Driver picked up rider for ride ${rideRequest.id}`);
     }
-    
-    moveToDropoff(driver, rideRequest) {
+
+    moveToDropoff(rideRequest) {
+        const driver = rideRequest.assignedDriver;
+        const driverData = driver.getData('driverData');
+        
         const distance = Phaser.Math.Distance.Between(
-            rideRequest.pickupX, rideRequest.pickupY,
+            driver.x, driver.y,
             rideRequest.dropoffX, rideRequest.dropoffY
         );
         
-        const speed = driver.getData('speed');
-        const duration = (distance / speed) * 1000;
+        const duration = (distance / driverData.speed) * 1000;
         
-        console.log(`Moving to dropoff: distance=${Math.round(distance)}, speed=${speed}, duration=${Math.round(duration)}ms`);
-        
-        // Move driver
         this.tweens.add({
             targets: driver,
             x: rideRequest.dropoffX,
             y: rideRequest.dropoffY,
             duration: duration,
-            ease: 'Power2',
+            ease: 'Linear',
             onComplete: () => {
-                console.log('Driver reached dropoff location!');
-                this.completeRide(driver, rideRequest);
+                this.completeRide(rideRequest);
             }
         });
         
-        // Move rider
+        // Move driver icon
+        this.tweens.add({
+            targets: driverData.icon,
+            x: rideRequest.dropoffX,
+            y: rideRequest.dropoffY,
+            duration: duration,
+            ease: 'Linear'
+        });
+        
+        // Move rider with driver
         this.tweens.add({
             targets: rideRequest.rider,
             x: rideRequest.dropoffX,
             y: rideRequest.dropoffY,
             duration: duration,
-            ease: 'Power2'
-        });
-        
-        // Move icons
-        this.tweens.add({
-            targets: driver.getData('icon'),
-            x: rideRequest.dropoffX,
-            y: rideRequest.dropoffY,
-            duration: duration,
-            ease: 'Power2'
+            ease: 'Linear'
         });
         
         this.tweens.add({
-            targets: rideRequest.rider.getData('icon'),
+            targets: riderData.icon,
             x: rideRequest.dropoffX,
             y: rideRequest.dropoffY,
             duration: duration,
-            ease: 'Power2'
+            ease: 'Linear'
         });
     }
-    
-    completeRide(driver, rideRequest) {
-        console.log(`Ride completed! Fare: $${rideRequest.fare}`);
+
+    completeRide(rideRequest) {
+        const driver = rideRequest.assignedDriver;
+        const driverData = driver.getData('driverData');
+        const riderData = rideRequest.rider.getData('riderData');
         
         // Update earnings
         this.earnings += rideRequest.fare;
-        this.completedRides++;
         
-        // Update rating (simple system)
-        const rideTime = Date.now() - rideRequest.startTime;
-        const expectedTime = 10000; // 10 seconds expected
-        const timeBonus = Math.max(0, (expectedTime - rideTime) / expectedTime);
-        this.rating = Math.min(5.0, this.rating + (timeBonus * 0.1));
-        
-        // For stats
-        this.rideDurationsMs.push(rideTime);
+        // Calculate rating based on completion time
+        const completionTime = Date.now() - rideRequest.startTime;
+        const expectedTime = 30000; // 30 seconds expected
+        const timeRatio = Math.min(completionTime / expectedTime, 2.0);
+        const ratingChange = Math.max(0.1, 0.5 - (timeRatio - 1) * 0.2);
+        this.rating = Math.min(5.0, this.rating + ratingChange);
         
         // Reset statuses
-        driver.setData('status', 'idle');
-        driver.setData('currentRide', null);
-        driver.setData('target', null);
+        driverData.status = 'idle';
+        riderData.status = 'idle';
         
-        rideRequest.rider.setData('status', 'waiting');
-        rideRequest.rider.setData('currentRide', null);
-        
-        // Remove visual indicators
+        // Remove markers
         rideRequest.pickupMarker.destroy();
+        rideRequest.pickupText.destroy();
         rideRequest.dropoffMarker.destroy();
-        rideRequest.fareText.destroy();
+        rideRequest.dropoffText.destroy();
         
-        // Remove from active rides
-        this.activeRides--;
-        
-        // Remove from ride requests
+        // Remove ride request
         const index = this.rideRequests.indexOf(rideRequest);
         if (index > -1) {
             this.rideRequests.splice(index, 1);
         }
         
-        this.updateUI();
+        this.activeRides--;
         
-        // Show completion message
-        this.showCompletionMessage(rideRequest.fare);
+        console.log(`✅ Completed ride: +$${rideRequest.fare}, rating: ${this.rating.toFixed(1)}`);
     }
-    
-    showCompletionMessage(fare) {
-        const message = this.add.text(400, 300, `Ride Completed!\n+$${fare}`, {
-            fontSize: '24px',
-            fill: '#00ff00',
-            backgroundColor: '#000000',
-            padding: { x: 10, y: 5 },
-            align: 'center'
-        });
-        message.setOrigin(0.5);
-        
-        // Fade out after 2 seconds
-        this.tweens.add({
-            targets: message,
-            alpha: 0,
-            duration: 2000,
-            onComplete: () => {
-                message.destroy();
-            }
-        });
-    }
-    
-    spawnRandomRideRequest() {
-        // Auto-spawn ride requests occasionally
+
+    autoGenerateRideRequest() {
         if (Math.random() < 0.3 && this.riders.length > 0) { // 30% chance
             this.createRideRequest();
         }
     }
-    
-    updateUI() {
-        document.getElementById('earnings').textContent = this.earnings;
-        document.getElementById('rating').textContent = this.rating.toFixed(1);
-        document.getElementById('active-rides').textContent = this.activeRides;
-        
-        // Update camera info
-        const cam = this.cameras.main;
-        document.getElementById('zoom-level').textContent = `${cam.zoom.toFixed(1)}x`;
-        document.getElementById('camera-pos').textContent = `${Math.round(cam.centerX)}, ${Math.round(cam.centerY)}`;
+
+    centerCameraOn(x, y) {
+        this.cameras.main.pan(x, y, 250, 'Power2');
     }
-    
-    update() {
-        // Update driver AI and ride status
-        this.updateDriverAI();
+
+    update(time, delta) {
+        // Update game time
+        this.gameTime += delta;
         
-        // Update object visibility based on camera viewport
+        // Update object visibility (viewport culling)
         this.updateObjectVisibility();
         
-        // Render minimap each frame
+        // Update mini-map
         this.renderMiniMap();
+        
+        // Update UI
+        this.updateUI();
     }
-    
+
     updateObjectVisibility() {
-        const cam = this.cameras.main;
-        const viewportLeft = cam.x;
-        const viewportTop = cam.y;
-        const viewportRight = cam.x + cam.width;
-        const viewportBottom = cam.y + cam.height;
+        const camera = this.cameras.main;
+        const viewport = {
+            left: camera.scrollX - 50,
+            right: camera.scrollX + camera.width + 50,
+            top: camera.scrollY - 50,
+            bottom: camera.scrollY + camera.height + 50
+        };
         
-        // Add some padding to viewport for smoother experience
-        const padding = 50;
-        const paddedLeft = viewportLeft - padding;
-        const paddedTop = viewportTop - padding;
-        const paddedRight = viewportRight + padding;
-        const paddedBottom = viewportBottom + padding;
-        
-        // Update driver visibility
-        this.drivers.forEach(driver => {
-            const isVisible = driver.x >= paddedLeft && driver.x <= paddedRight &&
-                             driver.y >= paddedTop && driver.y <= paddedBottom;
-            driver.setVisible(isVisible);
-            if (driver.getData('icon')) {
-                driver.getData('icon').setVisible(isVisible);
-            }
+        // Update street name visibility
+        this.streetNameObjects.forEach(name => {
+            const visible = name.x >= viewport.left && name.x <= viewport.right &&
+                           name.y >= viewport.top && name.y <= viewport.bottom;
+            name.setVisible(visible);
         });
         
-        // Update rider visibility
-        this.riders.forEach(rider => {
-            const isVisible = rider.x >= paddedLeft && rider.x <= paddedRight &&
-                             rider.y >= paddedTop && rider.y <= paddedBottom;
-            rider.setVisible(isVisible);
-            if (rider.getData('icon')) {
-                rider.getData('icon').setVisible(isVisible);
-            }
-        });
-        
-        // Update ride request markers visibility
-        this.rideRequests.forEach(rideRequest => {
-            if (rideRequest.pickupMarker) {
-                const pickupVisible = rideRequest.pickupX >= paddedLeft && rideRequest.pickupX <= paddedRight &&
-                                    rideRequest.pickupY >= paddedTop && rideRequest.pickupY <= paddedBottom;
-                rideRequest.pickupMarker.setVisible(pickupVisible);
-                if (rideRequest.fareText) {
-                    rideRequest.fareText.setVisible(pickupVisible);
-                }
-            }
-            
-            if (rideRequest.dropoffMarker) {
-                const dropoffVisible = rideRequest.dropoffX >= paddedLeft && rideRequest.dropoffX <= paddedRight &&
-                                     rideRequest.dropoffY >= paddedTop && rideRequest.dropoffY <= paddedBottom;
-                rideRequest.dropoffMarker.setVisible(dropoffVisible);
-            }
+        // Update building visibility
+        this.buildingObjects.forEach(building => {
+            const visible = building.x >= viewport.left && building.x <= viewport.right &&
+                           building.y >= viewport.top && building.y <= viewport.bottom;
+            building.setVisible(visible);
         });
         
         // Update landmark visibility
-        if (this.landmarkObjects) {
-            this.landmarkObjects.forEach(landmarkObj => {
-                const isVisible = landmarkObj.marker.x >= paddedLeft && landmarkObj.marker.x <= paddedRight &&
-                                 landmarkObj.marker.y >= paddedTop && landmarkObj.marker.y <= paddedBottom;
-                landmarkObj.marker.setVisible(isVisible);
-                landmarkObj.label.setVisible(isVisible);
-            });
-        }
-        
-        // Update building visibility (buildings are large, so use intersection check)
-        if (this.buildingObjects) {
-            this.buildingObjects.forEach(building => {
-                const buildingLeft = building.x - building.width / 2;
-                const buildingRight = building.x + building.width / 2;
-                const buildingTop = building.y - building.height / 2;
-                const buildingBottom = building.y + building.height / 2;
-                
-                const isVisible = !(buildingRight < paddedLeft || buildingLeft > paddedRight ||
-                                  buildingBottom < paddedTop || buildingTop > paddedBottom);
-                building.setVisible(isVisible);
-            });
-        }
-        
-        // Update road visibility (roads span the entire world, but we can optimize)
-        if (this.roadObjects) {
-            this.roadObjects.forEach(road => {
-                // Roads are always visible since they span the entire world
-                // But we could add more sophisticated culling if needed
-                road.setVisible(true);
-            });
-        }
-        
-        // Update street name visibility
-        if (this.streetNameObjects) {
-            this.streetNameObjects.forEach(streetName => {
-                const isVisible = streetName.x >= paddedLeft && streetName.x <= paddedRight &&
-                                 streetName.y >= paddedTop && streetName.y <= paddedBottom;
-                streetName.setVisible(isVisible);
-            });
-        }
-        
-        // Debug logging for viewport culling
-        if (this.isDragging) {
-            console.log(`Viewport culling: (${Math.round(viewportLeft)}, ${Math.round(viewportTop)}) to (${Math.round(viewportRight)}, ${Math.round(viewportBottom)})`);
-        }
-    }
-
-    updateDriverAI() {
-        // Update driver status indicators
-        this.drivers.forEach(driver => {
-            const status = driver.getData('status');
-            const icon = driver.getData('icon');
-            
-            // Update icon based on status
-            if (status === 'idle') {
-                icon.setText('🚗');
-            } else if (status === 'going_to_rider') {
-                icon.setText('🚗➡️');
-            } else if (status === 'on_ride') {
-                icon.setText('🚗👤');
-            }
+        this.landmarkObjects.forEach(landmark => {
+            const visible = landmark.x >= viewport.left && landmark.x <= viewport.right &&
+                           landmark.y >= viewport.top && landmark.y <= viewport.bottom;
+            landmark.setVisible(visible);
         });
     }
 
     renderMiniMap() {
-        if (!this.minimapCtx) return;
-        const ctx = this.minimapCtx;
-
-        // Clear
-        ctx.clearRect(0, 0, 240, 160);
-        ctx.fillStyle = '#1f2a35';
-        ctx.fillRect(0, 0, 240, 160);
-
-        // Draw roads (scaled)
-        ctx.strokeStyle = '#566573';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let y = 120; y < this.worldHeight - 120; y += 100) {
-            const sy = y * this.minimapScaleY;
-            ctx.moveTo(0, sy);
-            ctx.lineTo(240, sy);
+        const canvas = document.getElementById('minimap-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Clear canvas
+        ctx.fillStyle = '#2c3e50';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw roads
+        ctx.fillStyle = '#4a5a6a';
+        
+        // Horizontal roads
+        for (let i = 0; i < 14; i++) {
+            const y = (100 + i * 100) / this.worldHeight * canvas.height;
+            ctx.fillRect(0, y, canvas.width, 2);
         }
-        for (let x = 120; x < this.worldWidth - 120; x += 140) {
-            const sx = x * this.minimapScaleX;
-            ctx.moveTo(sx, 0);
-            ctx.lineTo(sx, 160);
+        
+        // Vertical roads
+        for (let i = 0; i < 16; i++) {
+            const x = (100 + i * 140) / this.worldWidth * canvas.width;
+            ctx.fillRect(x, 0, 2, canvas.height);
         }
-        ctx.stroke();
-
-        // Buildings (as dim rectangles)
-        if (this.buildings) {
-            ctx.fillStyle = 'rgba(127,140,141,0.5)';
-            this.buildings.forEach(b => {
-                const x = b.x * this.minimapScaleX;
-                const y = b.y * this.minimapScaleY;
-                const w = b.w * this.minimapScaleX;
-                const h = b.h * this.minimapScaleY;
-                ctx.fillRect(x, y, w, h);
-            });
-        }
-
-        // Riders
-        this.riders.forEach(r => {
-            const x = r.x * this.minimapScaleX;
-            const y = r.y * this.minimapScaleY;
+        
+        // Draw buildings
+        ctx.fillStyle = '#8f9ca3';
+        this.buildingObjects.forEach(building => {
+            if (building.visible) {
+                const x = building.x / this.worldWidth * canvas.width;
+                const y = building.y / this.worldHeight * canvas.height;
+                const width = building.width / this.worldWidth * canvas.width;
+                const height = building.height / this.worldHeight * canvas.height;
+                ctx.fillRect(x - width/2, y - height/2, width, height);
+            }
+        });
+        
+        // Draw drivers
+        ctx.fillStyle = '#3498db';
+        this.drivers.forEach(driver => {
+            const x = driver.x / this.worldWidth * canvas.width;
+            const y = driver.y / this.worldHeight * canvas.height;
+            ctx.fillRect(x - 2, y - 2, 4, 4);
+        });
+        
+        // Draw riders
+        ctx.fillStyle = '#2ecc71';
+        this.riders.forEach(rider => {
+            const x = rider.x / this.worldWidth * canvas.width;
+            const y = rider.y / this.worldHeight * canvas.height;
+            ctx.fillRect(x - 1, y - 1, 2, 2);
+        });
+        
+        // Draw ride requests
+        this.rideRequests.forEach(ride => {
+            // Pickup marker
+            ctx.fillStyle = '#f1c40f';
+            const pickupX = ride.pickupX / this.worldWidth * canvas.width;
+            const pickupY = ride.pickupY / this.worldHeight * canvas.height;
+            ctx.beginPath();
+            ctx.arc(pickupX, pickupY, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Dropoff marker
             ctx.fillStyle = '#2ecc71';
-            ctx.fillRect(x - 2, y - 2, 4, 4);
-        });
-
-        // Drivers
-        this.drivers.forEach(d => {
-            const x = d.x * this.minimapScaleX;
-            const y = d.y * this.minimapScaleY;
-            ctx.fillStyle = '#3498db';
-            ctx.fillRect(x - 2, y - 2, 4, 4);
-        });
-
-        // Ride markers
-        this.rideRequests.forEach(req => {
-            ctx.strokeStyle = '#f1c40f';
+            const dropoffX = ride.dropoffX / this.worldWidth * canvas.width;
+            const dropoffY = ride.dropoffY / this.worldHeight * canvas.height;
             ctx.beginPath();
-            ctx.arc(req.pickupX * this.minimapScaleX, req.pickupY * this.minimapScaleY, 4, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.strokeStyle = '#2ecc71';
-            ctx.beginPath();
-            ctx.arc(req.dropoffX * this.minimapScaleX, req.dropoffY * this.minimapScaleY, 3, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.arc(dropoffX, dropoffY, 2, 0, Math.PI * 2);
+            ctx.fill();
         });
-
-        // Draw street names on mini-map (smaller font)
-        this.drawMiniMapStreetNames(ctx);
-
-        // Draw viewport indicator (red square showing current camera view)
+        
+        // Draw viewport indicator (red square)
         this.drawViewportIndicator(ctx);
-
-        // Stats
-        const elapsed = Math.floor((Date.now() - this.simStartMs) / 1000);
-        const mm = String(Math.floor(elapsed / 60));
-        const ss = String(elapsed % 60).padStart(2, '0');
-        document.getElementById('map-time').textContent = `${mm}:${ss}`;
-        const agents = this.riders.length + this.drivers.length;
-        document.getElementById('map-agents').textContent = String(agents);
-        const avgMs = this.rideDurationsMs.length ? Math.round(this.rideDurationsMs.reduce((a,b)=>a+b,0) / this.rideDurationsMs.length) : 0;
-        document.getElementById('map-avg').textContent = `${Math.round(avgMs/1000)}s`;
+        
+        // Draw street names on mini-map
+        this.drawMiniMapStreetNames(ctx);
     }
 
     drawViewportIndicator(ctx) {
-        const cam = this.cameras.main;
+        const camera = this.cameras.main;
+        const canvas = document.getElementById('minimap-canvas');
         
-        // Calculate viewport bounds in world coordinates
-        const viewportLeft = cam.x;
-        const viewportTop = cam.y;
-        const viewportRight = cam.x + cam.width;
-        const viewportBottom = cam.y + cam.height;
+        const left = camera.scrollX / this.worldWidth * canvas.width;
+        const top = camera.scrollY / this.worldHeight * canvas.height;
+        const width = camera.width / this.worldWidth * canvas.width;
+        const height = camera.height / this.worldHeight * canvas.height;
         
-        // Convert to mini-map coordinates
-        const miniLeft = viewportLeft * this.minimapScaleX;
-        const miniTop = viewportTop * this.minimapScaleY;
-        const miniRight = viewportRight * this.minimapScaleX;
-        const miniBottom = viewportBottom * this.minimapScaleY;
-        
-        // Draw red square outline for viewport
-        ctx.strokeStyle = '#ff0000';
+        ctx.strokeStyle = '#e74c3c';
         ctx.lineWidth = 2;
-        ctx.strokeRect(miniLeft, miniTop, miniRight - miniLeft, miniBottom - miniTop);
-        
-        // Add semi-transparent red fill
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
-        ctx.fillRect(miniLeft, miniTop, miniRight - miniLeft, miniBottom - miniTop);
-        
-        console.log(`Viewport indicator: world(${Math.round(viewportLeft)}, ${Math.round(viewportTop)}) -> mini(${Math.round(miniLeft)}, ${Math.round(miniTop)})`);
+        ctx.strokeRect(left, top, width, height);
     }
 
     drawMiniMapStreetNames(ctx) {
-        // Street name arrays (same as in createStreetNames)
-        const streetNames = [
-            'Main St', 'Broadway', 'Oak Ave', 'Pine St', 'Elm St', 'Maple Ave',
-            'Cedar St', 'First St', 'Second St', 'Third St', 'Fourth St', 'Fifth St',
-            'Park Ave', 'Washington St', 'Lincoln Ave', 'Jefferson St', 'Madison Ave',
-            'Roosevelt St', 'Kennedy Ave', 'Church St', 'School St', 'Market St',
-            'Commerce St', 'Industrial Ave', 'Residential St', 'Garden Ave'
-        ];
-        
-        const avenueNames = [
-            'First Ave', 'Second Ave', 'Third Ave', 'Fourth Ave', 'Fifth Ave',
-            'Central Ave', 'North Ave', 'South Ave', 'East Ave', 'West Ave',
-            'Grand Ave', 'Royal Ave', 'Victory Ave', 'Liberty Ave', 'Freedom Ave',
-            'Peace Ave', 'Harmony Ave', 'Unity Ave', 'Progress Ave', 'Future Ave'
-        ];
-        
-        // Set font for mini-map street names
+        const canvas = document.getElementById('minimap-canvas');
         ctx.font = '8px Arial';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
         
-        // Draw street names on horizontal roads
-        this.roadY.forEach((y, index) => {
-            if (index < streetNames.length) {
-                const streetName = streetNames[index];
-                const miniY = y * this.minimapScaleY;
-                
-                // Draw street name at left edge
-                ctx.textAlign = 'left';
-                ctx.fillText(streetName, 5, miniY);
-                
-                // Draw street name at right edge
-                ctx.textAlign = 'right';
-                ctx.fillText(streetName, 235, miniY);
-            }
-        });
+        // Draw horizontal street names
+        for (let i = 0; i < 14; i++) {
+            const y = (100 + i * 100) / this.worldHeight * canvas.height;
+            const streetName = this.streetNames[i] || `S${i + 1}`;
+            ctx.fillText(streetName, canvas.width / 2, y - 2);
+        }
         
-        // Draw avenue names on vertical roads
-        this.roadX.forEach((x, index) => {
-            if (index < avenueNames.length) {
-                const avenueName = avenueNames[index];
-                const miniX = x * this.minimapScaleX;
-                
-                // Draw avenue name at top
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-                ctx.fillText(avenueName, miniX, 5);
-                
-                // Draw avenue name at bottom
-                ctx.textBaseline = 'bottom';
-                ctx.fillText(avenueName, miniX, 155);
-            }
-        });
-        
-        // Reset text alignment
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        // Draw vertical avenue names
+        for (let i = 0; i < 16; i++) {
+            const x = (100 + i * 140) / this.worldWidth * canvas.width;
+            const avenueName = this.avenueNames[i] || `A${i + 1}`;
+            ctx.save();
+            ctx.translate(x + 10, canvas.height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(avenueName, 0, 0);
+            ctx.restore();
+        }
     }
 
-    setupZoomControls() {
-        // Mouse wheel zoom
-        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
-            const cam = this.cameras.main;
-            const zoomFactor = 0.1;
-            const currentZoom = cam.zoom;
-            
-            if (deltaY > 0) {
-                // Zoom out
-                const newZoom = Math.max(0.5, currentZoom - zoomFactor);
-                cam.setZoom(newZoom);
-                console.log(`Zoomed out to: ${newZoom}`);
-            } else {
-                // Zoom in
-                const newZoom = Math.min(3.0, currentZoom + zoomFactor);
-                cam.setZoom(newZoom);
-                console.log(`Zoomed in to: ${newZoom}`);
-            }
-            this.updateUI();
-        });
+    updateUI() {
+        // Update earnings
+        document.getElementById('earnings').textContent = this.earnings;
         
-        // Keyboard zoom controls
-        this.input.keyboard.on('keydown-PLUS', () => {
-            const cam = this.cameras.main;
-            const newZoom = Math.min(3.0, cam.zoom + 0.2);
-            cam.setZoom(newZoom);
-            console.log(`Zoomed in to: ${newZoom}`);
-            this.updateUI();
-        });
+        // Update rating
+        document.getElementById('rating').textContent = this.rating.toFixed(1);
         
-        this.input.keyboard.on('keydown-MINUS', () => {
-            const cam = this.cameras.main;
-            const newZoom = Math.max(0.5, cam.zoom - 0.2);
-            cam.setZoom(newZoom);
-            console.log(`Zoomed out to: ${newZoom}`);
-            this.updateUI();
-        });
+        // Update active rides
+        document.getElementById('active-rides').textContent = this.activeRides;
         
-        // Reset zoom with '0' key
-        this.input.keyboard.on('keydown-ZERO', () => {
-            this.cameras.main.setZoom(1.0);
-            console.log('Zoom reset to 1.0');
-            this.updateUI();
-        });
-    }
-
-    centerCameraOn(worldX, worldY) {
-        const cam = this.cameras.main;
-        console.log(`Centering camera on world position: (${worldX}, ${worldY})`);
+        // Update game time
+        const minutes = Math.floor(this.gameTime / 60000);
+        const seconds = Math.floor((this.gameTime % 60000) / 1000);
+        document.getElementById('map-time').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         
-        // Clamp the target position to world bounds
-        const clampedX = Phaser.Math.Clamp(worldX, 0, this.worldWidth);
-        const clampedY = Phaser.Math.Clamp(worldY, 0, this.worldHeight);
+        // Update agents count
+        document.getElementById('map-agents').textContent = this.totalAgents;
         
-        // Use centerOn for proper centering
-        cam.centerOn(clampedX, clampedY);
+        // Update zoom level
+        document.getElementById('zoom-level').textContent = `${this.cameras.main.zoom.toFixed(1)}x`;
         
-        console.log(`Camera centered at: (${cam.centerX}, ${cam.centerY})`);
-        this.updateUI();
+        // Update camera position
+        const camX = Math.round(this.cameras.main.scrollX + this.cameras.main.width / 2);
+        const camY = Math.round(this.cameras.main.scrollY + this.cameras.main.height / 2);
+        document.getElementById('camera-pos').textContent = `${camX}, ${camY}`;
+        
+        // Update average ride duration
+        if (this.rideRequests.length > 0) {
+            const avgDuration = this.rideRequests.reduce((sum, ride) => {
+                return sum + (Date.now() - ride.startTime);
+            }, 0) / this.rideRequests.length;
+            document.getElementById('map-avg').textContent = `${Math.round(avgDuration / 1000)}s`;
+        } else {
+            document.getElementById('map-avg').textContent = '0s';
+        }
     }
 }
 
@@ -1198,7 +881,7 @@ class TrafficSimulator extends Phaser.Scene {
 const config = {
     type: Phaser.AUTO,
     width: window.innerWidth,
-    height: window.innerHeight - 140, // leave space for bottom UI like Warcraft
+    height: window.innerHeight - 140, // Leave space for bottom UI
     parent: 'game-canvas',
     backgroundColor: '#2c3e50',
     scene: TrafficSimulator,
@@ -1215,7 +898,7 @@ const config = {
     }
 };
 
-// Start the game
+// Create game instance
 const game = new Phaser.Game(config);
 
 // Handle window resize
@@ -1223,7 +906,7 @@ window.addEventListener('resize', () => {
     game.scale.resize(window.innerWidth, window.innerHeight - 140);
 });
 
-// Force canvas to take full size
+// Force canvas styling on load
 window.addEventListener('load', () => {
     const canvas = document.getElementById('game-canvas');
     if (canvas) {
@@ -1236,3 +919,5 @@ window.addEventListener('load', () => {
         canvas.style.bottom = '140px';
     }
 });
+
+console.log('🚗 Traffic Simulator - Game initialized!');
