@@ -63,6 +63,16 @@ class TrafficSimulatorSVG {
         this.miniMapSVG = null;
         this.worldGroup = null;
         this.uiGroup = null;
+        
+        // Performance monitoring
+        this.performanceStats = {
+            frameCount: 0,
+            lastFPSUpdate: Date.now(),
+            currentFPS: 0,
+            miniMapUpdates: 0,
+            uiUpdates: 0,
+            domQueries: 0
+        };
     }
 
     init() {
@@ -785,14 +795,32 @@ class TrafficSimulatorSVG {
 
     startGameLoop() {
         const gameLoop = () => {
+            const frameStart = performance.now();
+            
             // Update game time
             this.gameTime += 16; // ~60 FPS
             
-            // Update mini-map
+            // Update mini-map (with performance tracking)
             this.renderMiniMap();
+            this.performanceStats.miniMapUpdates++;
             
-            // Update UI
+            // Update UI (with performance tracking)
             this.updateUI();
+            this.performanceStats.uiUpdates++;
+            
+            // Performance monitoring
+            this.performanceStats.frameCount++;
+            const now = Date.now();
+            if (now - this.performanceStats.lastFPSUpdate >= 1000) {
+                this.performanceStats.currentFPS = this.performanceStats.frameCount;
+                this.performanceStats.frameCount = 0;
+                this.performanceStats.lastFPSUpdate = now;
+                
+                // Log performance stats every 5 seconds
+                if (this.performanceStats.currentFPS % 5 === 0) {
+                    console.log(`🎯 Performance: ${this.performanceStats.currentFPS} FPS, Mini-map updates: ${this.performanceStats.miniMapUpdates}, UI updates: ${this.performanceStats.uiUpdates}`);
+                }
+            }
             
             requestAnimationFrame(gameLoop);
         };
@@ -801,102 +829,189 @@ class TrafficSimulatorSVG {
     }
 
     renderMiniMap() {
-        // Clear mini-map
-        this.miniMapSVG.innerHTML = '';
+        // Flyweight pattern: Reuse existing elements instead of recreating
+        if (!this.miniMapElements) {
+            this.miniMapElements = {
+                roads: [],
+                buildings: [],
+                drivers: [],
+                riders: [],
+                rideRequests: [],
+                viewportIndicator: null
+            };
+            this.initializeMiniMapElements();
+        }
         
-        // Draw roads
+        // Update existing elements instead of recreating
+        this.updateMiniMapElements();
+    }
+
+    initializeMiniMapElements() {
+        // Create road elements once
         // Horizontal roads
         for (let i = 0; i < 14; i++) {
-            const y = (100 + i * 100) / this.worldHeight * 160;
             const road = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            road.setAttribute('x', '0');
-            road.setAttribute('y', (y - 1).toString());
+            road.setAttribute('fill', '#4a5a6a');
             road.setAttribute('width', '240');
             road.setAttribute('height', '2');
-            road.setAttribute('fill', '#4a5a6a');
             this.miniMapSVG.appendChild(road);
+            this.miniMapElements.roads.push(road);
         }
         
         // Vertical roads
         for (let i = 0; i < 16; i++) {
-            const x = (100 + i * 140) / this.worldWidth * 240;
             const road = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            road.setAttribute('x', (x - 1).toString());
-            road.setAttribute('y', '0');
+            road.setAttribute('fill', '#4a5a6a');
             road.setAttribute('width', '2');
             road.setAttribute('height', '160');
-            road.setAttribute('fill', '#4a5a6a');
             this.miniMapSVG.appendChild(road);
+            this.miniMapElements.roads.push(road);
         }
         
-        // Draw buildings
+        // Create building elements (reuse for visible buildings only)
+        for (let i = 0; i < 50; i++) { // Limit to 50 visible buildings max
+            const building = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            building.setAttribute('fill', '#8f9ca3');
+            building.style.display = 'none'; // Hidden by default
+            this.miniMapSVG.appendChild(building);
+            this.miniMapElements.buildings.push(building);
+        }
+        
+        // Create unit elements (reuse for all units)
+        for (let i = 0; i < 20; i++) { // Max 20 units
+            const driver = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            driver.setAttribute('width', '4');
+            driver.setAttribute('height', '4');
+            driver.setAttribute('fill', '#3498db');
+            driver.style.display = 'none';
+            this.miniMapSVG.appendChild(driver);
+            this.miniMapElements.drivers.push(driver);
+            
+            const rider = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rider.setAttribute('width', '2');
+            rider.setAttribute('height', '2');
+            rider.setAttribute('fill', '#2ecc71');
+            rider.style.display = 'none';
+            this.miniMapSVG.appendChild(rider);
+            this.miniMapElements.riders.push(rider);
+        }
+        
+        // Create ride request elements
+        for (let i = 0; i < 10; i++) { // Max 10 ride requests
+            const pickup = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            pickup.setAttribute('r', '3');
+            pickup.setAttribute('fill', '#f1c40f');
+            pickup.style.display = 'none';
+            this.miniMapSVG.appendChild(pickup);
+            
+            const dropoff = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dropoff.setAttribute('r', '2');
+            dropoff.setAttribute('fill', '#2ecc71');
+            dropoff.style.display = 'none';
+            this.miniMapSVG.appendChild(dropoff);
+            
+            this.miniMapElements.rideRequests.push({ pickup, dropoff });
+        }
+        
+        // Create viewport indicator
+        this.miniMapElements.viewportIndicator = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        this.miniMapElements.viewportIndicator.setAttribute('fill', 'none');
+        this.miniMapElements.viewportIndicator.setAttribute('stroke', '#e74c3c');
+        this.miniMapElements.viewportIndicator.setAttribute('stroke-width', '2');
+        this.miniMapSVG.appendChild(this.miniMapElements.viewportIndicator);
+    }
+
+    updateMiniMapElements() {
+        // Update road positions (static, but update for completeness)
+        for (let i = 0; i < 14; i++) {
+            const y = (100 + i * 100) / this.worldHeight * 160;
+            this.miniMapElements.roads[i].setAttribute('x', '0');
+            this.miniMapElements.roads[i].setAttribute('y', (y - 1).toString());
+        }
+        
+        for (let i = 0; i < 16; i++) {
+            const x = (100 + i * 140) / this.worldWidth * 240;
+            this.miniMapElements.roads[14 + i].setAttribute('x', (x - 1).toString());
+            this.miniMapElements.roads[14 + i].setAttribute('y', '0');
+        }
+        
+        // Update buildings (show only visible ones)
+        this.miniMapElements.buildings.forEach(building => building.style.display = 'none');
+        
+        let buildingIndex = 0;
         this.buildingObjects.forEach(building => {
+            if (buildingIndex >= this.miniMapElements.buildings.length) return;
+            
             const x = parseFloat(building.getAttribute('x')) / this.worldWidth * 240;
             const y = parseFloat(building.getAttribute('y')) / this.worldHeight * 160;
             const width = parseFloat(building.getAttribute('width')) / this.worldWidth * 240;
             const height = parseFloat(building.getAttribute('height')) / this.worldHeight * 160;
             
-            const miniBuilding = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            miniBuilding.setAttribute('x', x.toString());
-            miniBuilding.setAttribute('y', y.toString());
-            miniBuilding.setAttribute('width', width.toString());
-            miniBuilding.setAttribute('height', height.toString());
-            miniBuilding.setAttribute('fill', '#8f9ca3');
-            this.miniMapSVG.appendChild(miniBuilding);
+            // Only show buildings that are reasonably sized on mini-map
+            if (width > 1 && height > 1) {
+                const miniBuilding = this.miniMapElements.buildings[buildingIndex];
+                miniBuilding.setAttribute('x', x.toString());
+                miniBuilding.setAttribute('y', y.toString());
+                miniBuilding.setAttribute('width', width.toString());
+                miniBuilding.setAttribute('height', height.toString());
+                miniBuilding.style.display = 'block';
+                buildingIndex++;
+            }
         });
         
-        // Draw drivers
-        this.drivers.forEach(driver => {
+        // Update drivers
+        this.miniMapElements.drivers.forEach(driver => driver.style.display = 'none');
+        this.drivers.forEach((driver, index) => {
+            if (index >= this.miniMapElements.drivers.length) return;
+            
             const x = driver.x / this.worldWidth * 240;
             const y = driver.y / this.worldHeight * 160;
             
-            const miniDriver = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            const miniDriver = this.miniMapElements.drivers[index];
             miniDriver.setAttribute('x', (x - 2).toString());
             miniDriver.setAttribute('y', (y - 2).toString());
-            miniDriver.setAttribute('width', '4');
-            miniDriver.setAttribute('height', '4');
-            miniDriver.setAttribute('fill', '#3498db');
-            this.miniMapSVG.appendChild(miniDriver);
+            miniDriver.style.display = 'block';
         });
         
-        // Draw riders
-        this.riders.forEach(rider => {
+        // Update riders
+        this.miniMapElements.riders.forEach(rider => rider.style.display = 'none');
+        this.riders.forEach((rider, index) => {
+            if (index >= this.miniMapElements.riders.length) return;
+            
             const x = rider.x / this.worldWidth * 240;
             const y = rider.y / this.worldHeight * 160;
             
-            const miniRider = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            const miniRider = this.miniMapElements.riders[index];
             miniRider.setAttribute('x', (x - 1).toString());
             miniRider.setAttribute('y', (y - 1).toString());
-            miniRider.setAttribute('width', '2');
-            miniRider.setAttribute('height', '2');
-            miniRider.setAttribute('fill', '#2ecc71');
-            this.miniMapSVG.appendChild(miniRider);
+            miniRider.style.display = 'block';
         });
         
-        // Draw ride requests
-        this.rideRequests.forEach(ride => {
-            // Pickup marker
+        // Update ride requests
+        this.miniMapElements.rideRequests.forEach(ride => {
+            ride.pickup.style.display = 'none';
+            ride.dropoff.style.display = 'none';
+        });
+        
+        this.rideRequests.forEach((ride, index) => {
+            if (index >= this.miniMapElements.rideRequests.length) return;
+            
             const pickupX = ride.pickupX / this.worldWidth * 240;
             const pickupY = ride.pickupY / this.worldHeight * 160;
-            const pickupMarker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            pickupMarker.setAttribute('cx', pickupX.toString());
-            pickupMarker.setAttribute('cy', pickupY.toString());
-            pickupMarker.setAttribute('r', '3');
-            pickupMarker.setAttribute('fill', '#f1c40f');
-            this.miniMapSVG.appendChild(pickupMarker);
-            
-            // Dropoff marker
             const dropoffX = ride.dropoffX / this.worldWidth * 240;
             const dropoffY = ride.dropoffY / this.worldHeight * 160;
-            const dropoffMarker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            dropoffMarker.setAttribute('cx', dropoffX.toString());
-            dropoffMarker.setAttribute('cy', dropoffY.toString());
-            dropoffMarker.setAttribute('r', '2');
-            dropoffMarker.setAttribute('fill', '#2ecc71');
-            this.miniMapSVG.appendChild(dropoffMarker);
+            
+            const miniRide = this.miniMapElements.rideRequests[index];
+            miniRide.pickup.setAttribute('cx', pickupX.toString());
+            miniRide.pickup.setAttribute('cy', pickupY.toString());
+            miniRide.pickup.style.display = 'block';
+            
+            miniRide.dropoff.setAttribute('cx', dropoffX.toString());
+            miniRide.dropoff.setAttribute('cy', dropoffY.toString());
+            miniRide.dropoff.style.display = 'block';
         });
         
-        // Draw viewport indicator (red square)
+        // Update viewport indicator
         const viewBoxX = this.cameraX - this.viewportWidth / (2 * this.zoom);
         const viewBoxY = this.cameraY - this.viewportHeight / (2 * this.zoom);
         const viewBoxWidth = this.viewportWidth / this.zoom;
@@ -907,49 +1022,83 @@ class TrafficSimulatorSVG {
         const width = viewBoxWidth / this.worldWidth * 240;
         const height = viewBoxHeight / this.worldHeight * 160;
         
-        const viewportIndicator = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        viewportIndicator.setAttribute('x', left.toString());
-        viewportIndicator.setAttribute('y', top.toString());
-        viewportIndicator.setAttribute('width', width.toString());
-        viewportIndicator.setAttribute('height', height.toString());
-        viewportIndicator.setAttribute('fill', 'none');
-        viewportIndicator.setAttribute('stroke', '#e74c3c');
-        viewportIndicator.setAttribute('stroke-width', '2');
-        this.miniMapSVG.appendChild(viewportIndicator);
+        this.miniMapElements.viewportIndicator.setAttribute('x', left.toString());
+        this.miniMapElements.viewportIndicator.setAttribute('y', top.toString());
+        this.miniMapElements.viewportIndicator.setAttribute('width', width.toString());
+        this.miniMapElements.viewportIndicator.setAttribute('height', height.toString());
     }
 
     updateUI() {
-        // Update earnings
-        document.getElementById('earnings').textContent = this.earnings;
+        // Flyweight pattern: Cache DOM elements and only update when values change
+        if (!this.uiElements) {
+            this.uiElements = {
+                earnings: document.getElementById('earnings'),
+                rating: document.getElementById('rating'),
+                activeRides: document.getElementById('active-rides'),
+                mapTime: document.getElementById('map-time'),
+                mapAgents: document.getElementById('map-agents'),
+                zoomLevel: document.getElementById('zoom-level'),
+                cameraPos: document.getElementById('camera-pos'),
+                mapAvg: document.getElementById('map-avg')
+            };
+            this.lastUIValues = {};
+        }
         
-        // Update rating
-        document.getElementById('rating').textContent = this.rating.toFixed(1);
+        // Only update if values have changed (performance optimization)
+        const newEarnings = this.earnings.toString();
+        if (this.lastUIValues.earnings !== newEarnings) {
+            this.uiElements.earnings.textContent = newEarnings;
+            this.lastUIValues.earnings = newEarnings;
+        }
         
-        // Update active rides
-        document.getElementById('active-rides').textContent = this.activeRides;
+        const newRating = this.rating.toFixed(1);
+        if (this.lastUIValues.rating !== newRating) {
+            this.uiElements.rating.textContent = newRating;
+            this.lastUIValues.rating = newRating;
+        }
         
-        // Update game time
+        const newActiveRides = this.activeRides.toString();
+        if (this.lastUIValues.activeRides !== newActiveRides) {
+            this.uiElements.activeRides.textContent = newActiveRides;
+            this.lastUIValues.activeRides = newActiveRides;
+        }
+        
+        // Update game time (always update as it changes frequently)
         const minutes = Math.floor(this.gameTime / 60000);
         const seconds = Math.floor((this.gameTime % 60000) / 1000);
-        document.getElementById('map-time').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        this.uiElements.mapTime.textContent = timeString;
         
-        // Update agents count
-        document.getElementById('map-agents').textContent = this.totalAgents;
+        const newAgents = this.totalAgents.toString();
+        if (this.lastUIValues.agents !== newAgents) {
+            this.uiElements.mapAgents.textContent = newAgents;
+            this.lastUIValues.agents = newAgents;
+        }
         
-        // Update zoom level
-        document.getElementById('zoom-level').textContent = `${this.zoom.toFixed(1)}x`;
+        const newZoom = `${this.zoom.toFixed(1)}x`;
+        if (this.lastUIValues.zoom !== newZoom) {
+            this.uiElements.zoomLevel.textContent = newZoom;
+            this.lastUIValues.zoom = newZoom;
+        }
         
-        // Update camera position
-        document.getElementById('camera-pos').textContent = `${Math.round(this.cameraX)}, ${Math.round(this.cameraY)}`;
+        const newCameraPos = `${Math.round(this.cameraX)}, ${Math.round(this.cameraY)}`;
+        if (this.lastUIValues.cameraPos !== newCameraPos) {
+            this.uiElements.cameraPos.textContent = newCameraPos;
+            this.lastUIValues.cameraPos = newCameraPos;
+        }
         
         // Update average ride duration
+        let avgDurationText = '0s';
         if (this.rideRequests.length > 0) {
             const avgDuration = this.rideRequests.reduce((sum, ride) => {
                 return sum + (Date.now() - ride.startTime);
             }, 0) / this.rideRequests.length;
-            document.getElementById('map-avg').textContent = `${Math.round(avgDuration / 1000)}s`;
-        } else {
-            document.getElementById('map-avg').textContent = '0s';
+            avgDurationText = `${Math.round(avgDuration / 1000)}s`;
+        }
+        
+        if (this.lastUIValues.avgDuration !== avgDurationText) {
+            this.uiElements.mapAvg.textContent = avgDurationText;
+            this.lastUIValues.avgDuration = avgDurationText;
         }
     }
 }
