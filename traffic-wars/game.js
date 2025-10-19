@@ -126,6 +126,10 @@ class TrafficSimulatorSVG {
         this.viewportWidth = rect.width;
         this.viewportHeight = rect.height;
         
+        // Ensure SVG has proper dimensions
+        this.gameSVG.setAttribute('width', this.viewportWidth.toString());
+        this.gameSVG.setAttribute('height', this.viewportHeight.toString());
+        
         // Update SVG viewBox to show the current camera view
         const viewBoxX = this.cameraX - this.viewportWidth / (2 * this.zoom);
         const viewBoxY = this.cameraY - this.viewportHeight / (2 * this.zoom);
@@ -1119,6 +1123,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // Handle window resize
 window.addEventListener('resize', () => {
     if (window.game) {
-        window.game.updateViewportSize();
+        // Force layout recalculation
+        setTimeout(() => {
+            window.game.updateViewportSize();
+        }, 100);
     }
 });
