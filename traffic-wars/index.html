@@ -511,31 +511,6 @@
             transition: height 0.1s ease;
         }
 
-        #mapview {
-            min-width: 240px;
-            height: 120px;
-            background: #1a1a1a;
-            border: 2px solid #3498db;
-            border-radius: 8px;
-            padding: 8px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #mapview h3 {
-            color: #3498db;
-            font-size: 12px;
-            margin-bottom: 5px;
-            text-align: center;
-        }
-
-        #minimap-svg {
-            width: 100%;
-            height: 100px;
-            background: #2c3e50;
-            border: 1px solid #34495e;
-            border-radius: 4px;
-        }
 
         .ui-section {
             display: flex;
@@ -599,55 +574,59 @@
 <body>
     <div id="game-container">
         <div id="ui-panel">
-            <!-- Left: Pure Graphical Minimap -->
-            <div id="mapview">
-                <h3>Map</h3>
-                <svg id="minimap-svg" viewBox="0 0 240 160"></svg>
-            </div>
-            
-            <!-- Second: Map Information Panel -->
-            <div class="ui-section" style="align-items:flex-start; min-width: 200px;">
-                <h3 style="margin: 0 0 8px 0; color: #3498db; font-size: 14px;">Map Info</h3>
-                <div class="resource-display">
-                    <span>Time: <span id="map-time">0:00</span></span>
-                </div>
-                <div class="resource-display">
-                    <span>Agents: <span id="map-agents">0</span></span>
-                </div>
-                <div class="resource-display">
-                    <span>Avg Ride: <span id="map-avg">0s</span></span>
-                </div>
-                <div class="resource-display">
-                    <span>Avg Driver Dist: <span id="avg-driver-distance">0km</span></span>
-                </div>
-                <div class="resource-display">
-                    <span>Zoom: <span id="zoom-level">1.0x</span></span>
-                </div>
-                <div class="resource-display">
-                    <span>Camera: <span id="camera-pos">1200, 800</span></span>
+            <!-- Left: Game Title and Resources -->
+            <div class="ui-section" style="align-items:flex-start; min-width: 250px;">
+                <h2 style="margin: 0 0 12px 0; color: #ecf0f1; font-size: 20px;">🚗 Traffic Simulator</h2>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <div class="resource-display">
+                        <span>💰 Earnings: <span id="earnings">0</span></span>
+                    </div>
+                    <div class="resource-display">
+                        <span>📊 Rating: <span id="rating">5.0</span></span>
+                    </div>
+                    <div class="resource-display">
+                        <span>🚗 Active Rides: <span id="active-rides">0</span></span>
+                    </div>
                 </div>
             </div>
             
-            <!-- Third: Resources / Title -->
-            <div class="ui-section" style="align-items:flex-start;">
-                <h2 style="margin: 0 0 8px 0; color: #ecf0f1;">🚗 Traffic Simulator</h2>
-                <div class="resource-display">
-                    <span>💰 Earnings: <span id="earnings">0</span></span>
-                </div>
-                <div class="resource-display">
-                    <span>📊 Rating: <span id="rating">5.0</span></span>
-                </div>
-                <div class="resource-display">
-                    <span>🚗 Active Rides: <span id="active-rides">0</span></span>
+            <!-- Center: Map Information Panel -->
+            <div class="ui-section" style="align-items:flex-start; min-width: 300px;">
+                <h3 style="margin: 0 0 12px 0; color: #3498db; font-size: 16px;">Game Statistics</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <div class="resource-display">
+                        <span>Time: <span id="map-time">0:00</span></span>
+                    </div>
+                    <div class="resource-display">
+                        <span>Agents: <span id="map-agents">0</span></span>
+                    </div>
+                    <div class="resource-display">
+                        <span>Avg Ride: <span id="map-avg">0s</span></span>
+                    </div>
+                    <div class="resource-display">
+                        <span>Avg Driver Dist: <span id="avg-driver-distance">0km</span></span>
+                    </div>
+                    <div class="resource-display">
+                        <span>Zoom: <span id="zoom-level">1.0x</span></span>
+                    </div>
+                    <div class="resource-display">
+                        <span>Camera: <span id="camera-pos">1200, 800</span></span>
+                    </div>
                 </div>
             </div>
             
             <!-- Right: Commands / Selection -->
-            <div class="ui-section" style="justify-content:flex-end; gap:10px;">
-                <button class="unit-button" id="spawn-rider">🏍️ Spawn Rider</button>
-                <button class="unit-button" id="spawn-driver">🚗 Spawn Driver</button>
-                <button class="unit-button" id="request-ride">📱 Request Ride</button>
-                <button class="unit-button" id="clean-map" style="background-color: #e74c3c; color: white;">🧹 Clean Map</button>
+            <div class="ui-section" style="justify-content:flex-end; gap:12px; min-width: 300px;">
+                <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+                    <div style="display: flex; gap: 8px;">
+                        <button class="unit-button" id="spawn-rider">🏍️ Spawn Rider</button>
+                        <button class="unit-button" id="spawn-driver">🚗 Spawn Driver</button>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="unit-button" id="request-ride">📱 Request Ride</button>
+                        <button class="unit-button" id="clean-map" style="background-color: #e74c3c; color: white;">🧹 Clean Map</button>
+                    </div>
+                </div>
                 <div class="selected-info" id="selected-info">No units selected</div>
             </div>
         </div>

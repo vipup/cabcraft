@@ -60,7 +60,6 @@ class TrafficSimulatorSVG {
         
         // SVG elements
         this.gameSVG = null;
-        this.miniMapSVG = null;
         this.worldGroup = null;
         this.uiGroup = null;
         
@@ -80,7 +79,6 @@ class TrafficSimulatorSVG {
         
         // Get SVG elements
         this.gameSVG = document.getElementById('game-svg');
-        this.miniMapSVG = document.getElementById('minimap-svg');
         
         // Calculate viewport size
         this.updateViewportSize();
@@ -542,13 +540,6 @@ class TrafficSimulatorSVG {
             });
         });
         
-        // Mini-map click handler
-        this.miniMapSVG.addEventListener('click', (event) => {
-            const rect = this.miniMapSVG.getBoundingClientRect();
-            const x = (event.clientX - rect.left) / rect.width * this.worldWidth;
-            const y = (event.clientY - rect.top) / rect.height * this.worldHeight;
-            this.centerCameraOn(x, y);
-        });
     }
 
     spawnRider() {
@@ -1371,9 +1362,6 @@ class TrafficSimulatorSVG {
             // Update game time
             this.gameTime += 16; // ~60 FPS
             
-            // Update mini-map (with performance tracking)
-            this.renderMiniMap();
-            this.performanceStats.miniMapUpdates++;
             
             // Update UI (with performance tracking)
             this.updateUI();
@@ -1399,244 +1387,6 @@ class TrafficSimulatorSVG {
         requestAnimationFrame(gameLoop);
     }
 
-    renderMiniMap() {
-        // Flyweight pattern: Reuse existing elements instead of recreating
-        if (!this.miniMapElements) {
-            this.miniMapElements = {
-                roads: [],
-                buildings: [],
-                drivers: [],
-                riders: [],
-                rideRequests: [],
-                viewportIndicator: null
-            };
-            this.initializeMiniMapElements();
-        }
-        
-        // Update existing elements instead of recreating
-        this.updateMiniMapElements();
-    }
-
-    initializeMiniMapElements() {
-        // Create road elements once
-        // Horizontal roads
-        for (let i = 0; i < 14; i++) {
-            const road = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            road.setAttribute('fill', '#4a5a6a');
-            road.setAttribute('width', '240');
-            road.setAttribute('height', '2');
-            this.miniMapSVG.appendChild(road);
-            this.miniMapElements.roads.push(road);
-        }
-        
-        // Vertical roads
-        for (let i = 0; i < 16; i++) {
-            const road = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            road.setAttribute('fill', '#4a5a6a');
-            road.setAttribute('width', '2');
-            road.setAttribute('height', '160');
-            this.miniMapSVG.appendChild(road);
-            this.miniMapElements.roads.push(road);
-        }
-        
-        // Create building elements (reuse for visible buildings only)
-        for (let i = 0; i < 50; i++) { // Limit to 50 visible buildings max
-            const building = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            building.setAttribute('fill', '#8f9ca3');
-            building.style.display = 'none'; // Hidden by default
-            this.miniMapSVG.appendChild(building);
-            this.miniMapElements.buildings.push(building);
-        }
-        
-        // Create unit elements (reuse for all units)
-        for (let i = 0; i < 20; i++) { // Max 20 units
-            const driver = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            driver.setAttribute('width', '4');
-            driver.setAttribute('height', '4');
-            driver.setAttribute('fill', '#3498db');
-            driver.style.display = 'none';
-            this.miniMapSVG.appendChild(driver);
-            this.miniMapElements.drivers.push(driver);
-            
-            const rider = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rider.setAttribute('width', '2');
-            rider.setAttribute('height', '2');
-            rider.setAttribute('fill', '#2ecc71');
-            rider.style.display = 'none';
-            this.miniMapSVG.appendChild(rider);
-            this.miniMapElements.riders.push(rider);
-        }
-        
-        // Create ride request elements
-        for (let i = 0; i < 10; i++) { // Max 10 ride requests
-            const pickup = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            pickup.setAttribute('r', '3');
-            pickup.setAttribute('fill', '#f1c40f');
-            pickup.style.display = 'none';
-            this.miniMapSVG.appendChild(pickup);
-            
-            const dropoff = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            dropoff.setAttribute('r', '2');
-            dropoff.setAttribute('fill', '#2ecc71');
-            dropoff.style.display = 'none';
-            this.miniMapSVG.appendChild(dropoff);
-            
-            this.miniMapElements.rideRequests.push({ pickup, dropoff });
-        }
-        
-        // Create viewport indicator
-        this.miniMapElements.viewportIndicator = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        this.miniMapElements.viewportIndicator.setAttribute('fill', 'none');
-        this.miniMapElements.viewportIndicator.setAttribute('stroke', '#e74c3c');
-        this.miniMapElements.viewportIndicator.setAttribute('stroke-width', '2');
-        this.miniMapSVG.appendChild(this.miniMapElements.viewportIndicator);
-    }
-
-    updateMiniMapElements() {
-        // Update road positions (static, but update for completeness)
-        for (let i = 0; i < 14; i++) {
-            const y = (100 + i * 100) / this.worldHeight * 160;
-            this.miniMapElements.roads[i].setAttribute('x', '0');
-            this.miniMapElements.roads[i].setAttribute('y', (y - 1).toString());
-        }
-        
-        for (let i = 0; i < 16; i++) {
-            const x = (100 + i * 140) / this.worldWidth * 240;
-            this.miniMapElements.roads[14 + i].setAttribute('x', (x - 1).toString());
-            this.miniMapElements.roads[14 + i].setAttribute('y', '0');
-        }
-        
-        // Update buildings (show only visible ones)
-        this.miniMapElements.buildings.forEach(building => building.style.display = 'none');
-        
-        let buildingIndex = 0;
-        this.buildingObjects.forEach(building => {
-            if (buildingIndex >= this.miniMapElements.buildings.length) return;
-            
-            const x = parseFloat(building.getAttribute('x'));
-            const y = parseFloat(building.getAttribute('y'));
-            const width = parseFloat(building.getAttribute('width'));
-            const height = parseFloat(building.getAttribute('height'));
-            
-            // Skip if any attribute is NaN or invalid
-            if (isNaN(x) || isNaN(y) || isNaN(width) || isNaN(height)) {
-                return;
-            }
-            
-            const miniX = x / this.worldWidth * 240;
-            const miniY = y / this.worldHeight * 160;
-            const miniWidth = width / this.worldWidth * 240;
-            const miniHeight = height / this.worldHeight * 160;
-            
-            // Only show buildings that are reasonably sized on mini-map
-            if (miniWidth > 1 && miniHeight > 1) {
-                const miniBuilding = this.miniMapElements.buildings[buildingIndex];
-                miniBuilding.setAttribute('x', miniX.toString());
-                miniBuilding.setAttribute('y', miniY.toString());
-                miniBuilding.setAttribute('width', miniWidth.toString());
-                miniBuilding.setAttribute('height', miniHeight.toString());
-                miniBuilding.style.display = 'block';
-                buildingIndex++;
-            }
-        });
-        
-        // Update drivers
-        this.miniMapElements.drivers.forEach(driver => driver.style.display = 'none');
-        this.drivers.forEach((driver, index) => {
-            if (index >= this.miniMapElements.drivers.length) return;
-            
-            // 🐛 BUG FIX: Validate driver coordinates first
-            if (isNaN(driver.x) || isNaN(driver.y) || !isFinite(driver.x) || !isFinite(driver.y)) {
-                console.warn(`Invalid driver coordinates: x=${driver.x}, y=${driver.y}`);
-                return;
-            }
-            
-            const x = driver.x / this.worldWidth * 240;
-            const y = driver.y / this.worldHeight * 160;
-            
-            // Validate calculated mini-map coordinates
-            if (isNaN(x) || isNaN(y) || !isFinite(x) || !isFinite(y)) {
-                console.warn(`Invalid mini-map driver coordinates: x=${x}, y=${y}`);
-                return;
-            }
-            
-            const miniDriver = this.miniMapElements.drivers[index];
-            miniDriver.setAttribute('x', (x - 2).toString());
-            miniDriver.setAttribute('y', (y - 2).toString());
-            miniDriver.style.display = 'block';
-        });
-        
-        // Update riders
-        this.miniMapElements.riders.forEach(rider => rider.style.display = 'none');
-        this.riders.forEach((rider, index) => {
-            if (index >= this.miniMapElements.riders.length) return;
-            
-            // 🐛 BUG FIX: Validate rider coordinates first
-            if (isNaN(rider.x) || isNaN(rider.y) || !isFinite(rider.x) || !isFinite(rider.y)) {
-                console.warn(`Invalid rider coordinates: x=${rider.x}, y=${rider.y}`);
-                return;
-            }
-            
-            const x = rider.x / this.worldWidth * 240;
-            const y = rider.y / this.worldHeight * 160;
-            
-            // Validate calculated mini-map coordinates
-            if (isNaN(x) || isNaN(y) || !isFinite(x) || !isFinite(y)) {
-                console.warn(`Invalid mini-map rider coordinates: x=${x}, y=${y}`);
-                return;
-            }
-            
-            const miniRider = this.miniMapElements.riders[index];
-            miniRider.setAttribute('x', (x - 1).toString());
-            miniRider.setAttribute('y', (y - 1).toString());
-            miniRider.style.display = 'block';
-        });
-        
-        // Update ride requests
-        this.miniMapElements.rideRequests.forEach(ride => {
-            ride.pickup.style.display = 'none';
-            ride.dropoff.style.display = 'none';
-        });
-        
-        this.rideRequests.forEach((ride, index) => {
-            if (index >= this.miniMapElements.rideRequests.length) return;
-            
-            // Validate ride coordinates
-            if (isNaN(ride.pickupX) || isNaN(ride.pickupY) || isNaN(ride.dropoffX) || isNaN(ride.dropoffY)) {
-                return;
-            }
-            
-            const pickupX = ride.pickupX / this.worldWidth * 240;
-            const pickupY = ride.pickupY / this.worldHeight * 160;
-            const dropoffX = ride.dropoffX / this.worldWidth * 240;
-            const dropoffY = ride.dropoffY / this.worldHeight * 160;
-            
-            const miniRide = this.miniMapElements.rideRequests[index];
-            miniRide.pickup.setAttribute('cx', pickupX.toString());
-            miniRide.pickup.setAttribute('cy', pickupY.toString());
-            miniRide.pickup.style.display = 'block';
-            
-            miniRide.dropoff.setAttribute('cx', dropoffX.toString());
-            miniRide.dropoff.setAttribute('cy', dropoffY.toString());
-            miniRide.dropoff.style.display = 'block';
-        });
-        
-        // Update viewport indicator
-        const viewBoxX = this.cameraX - this.viewportWidth / (2 * this.zoom);
-        const viewBoxY = this.cameraY - this.viewportHeight / (2 * this.zoom);
-        const viewBoxWidth = this.viewportWidth / this.zoom;
-        const viewBoxHeight = this.viewportHeight / this.zoom;
-        
-        const left = viewBoxX / this.worldWidth * 240;
-        const top = viewBoxY / this.worldHeight * 160;
-        const width = viewBoxWidth / this.worldWidth * 240;
-        const height = viewBoxHeight / this.worldHeight * 160;
-        
-        this.miniMapElements.viewportIndicator.setAttribute('x', left.toString());
-        this.miniMapElements.viewportIndicator.setAttribute('y', top.toString());
-        this.miniMapElements.viewportIndicator.setAttribute('width', width.toString());
-        this.miniMapElements.viewportIndicator.setAttribute('height', height.toString());
-    }
 
     updateUI() {
         // Flyweight pattern: Cache DOM elements and only update when values change
