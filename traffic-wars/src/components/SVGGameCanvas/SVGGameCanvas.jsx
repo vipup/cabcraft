@@ -26,9 +26,13 @@ const SVGGameCanvas = () => {
     const dx = (e.clientX - dragStart.x) / camera.zoom
     const dy = (e.clientY - dragStart.y) / camera.zoom
     
+    // Calculate proper bounds based on viewport and zoom
+    const halfViewWidth = (window.innerWidth - 56 - 300) / (2 * camera.zoom)
+    const halfViewHeight = (window.innerHeight - 48 - 32) / (2 * camera.zoom)
+    
     updateCamera({
-      x: Math.max(0, Math.min(worldSize.width, camera.x - dx)),
-      y: Math.max(0, Math.min(worldSize.height, camera.y - dy))
+      x: Math.max(halfViewWidth, Math.min(worldSize.width - halfViewWidth, camera.x - dx)),
+      y: Math.max(halfViewHeight, Math.min(worldSize.height - halfViewHeight, camera.y - dy))
     })
     
     setDragStart({ x: e.clientX, y: e.clientY })
@@ -71,10 +75,16 @@ const SVGGameCanvas = () => {
       const driver = drivers.find(d => d.id === ride.assignedDriver.id)
       if (!driver) return
       
-      // Update camera to center on driver
+      // Update camera to center on driver, but respect world bounds
+      const halfViewWidth = (window.innerWidth - 56 - 300) / (2 * camera.zoom)
+      const halfViewHeight = (window.innerHeight - 48 - 32) / (2 * camera.zoom)
+      
+      const clampedX = Math.max(halfViewWidth, Math.min(worldSize.width - halfViewWidth, driver.x))
+      const clampedY = Math.max(halfViewHeight, Math.min(worldSize.height - halfViewHeight, driver.y))
+      
       updateCamera({
-        x: driver.x,
-        y: driver.y
+        x: clampedX,
+        y: clampedY
       })
     }
     
@@ -96,10 +106,22 @@ const SVGGameCanvas = () => {
   const viewportWidth = window.innerWidth - 56 - 300 // left toolbar + right panel
   const viewportHeight = window.innerHeight - 48 - 32 // top banner + bottom bar
   
-  const viewBoxX = camera.x - (viewportWidth / (2 * camera.zoom))
-  const viewBoxY = camera.y - (viewportHeight / (2 * camera.zoom))
-  const viewBoxWidth = viewportWidth / camera.zoom
-  const viewBoxHeight = viewportHeight / camera.zoom
+  // Ensure viewport dimensions are positive
+  const safeViewportWidth = Math.max(100, viewportWidth)
+  const safeViewportHeight = Math.max(100, viewportHeight)
+  
+  // Calculate viewBox with bounds checking
+  const halfViewWidth = safeViewportWidth / (2 * camera.zoom)
+  const halfViewHeight = safeViewportHeight / (2 * camera.zoom)
+  
+  // Clamp camera position to world bounds
+  const clampedCameraX = Math.max(halfViewWidth, Math.min(worldSize.width - halfViewWidth, camera.x))
+  const clampedCameraY = Math.max(halfViewHeight, Math.min(worldSize.height - halfViewHeight, camera.y))
+  
+  const viewBoxX = Math.max(0, clampedCameraX - halfViewWidth)
+  const viewBoxY = Math.max(0, clampedCameraY - halfViewHeight)
+  const viewBoxWidth = Math.max(1, safeViewportWidth / camera.zoom)
+  const viewBoxHeight = Math.max(1, safeViewportHeight / camera.zoom)
   
   return (
     <svg
