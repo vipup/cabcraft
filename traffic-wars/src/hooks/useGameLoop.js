@@ -89,8 +89,9 @@ export const useGameLoop = () => {
             pathIndex: undefined
           })
           
-          const emoji = ride.type === 'air' ? '✈️' : '🚗'
-          info(`${emoji} Auto-assigned Driver #${closestDriver.id} to waiting ${ride.type} ride #${ride.id}`)
+                 const emoji = ride.type === 'air' ? '✈️' : '🚗'
+                 const unitName = ride.type === 'air' ? 'Pilot' : 'Driver'
+                 info(`${emoji} Auto-assigned ${unitName} #${closestDriver.id} to waiting ${ride.type} ride #${ride.id}`)
         }
       }
     })
@@ -135,7 +136,7 @@ export const useGameLoop = () => {
             if (!currentWaypoint) {
               // Path completed, reached final target
               const ride = rideRequests.find(r => r.assignedDriver?.id === driver.id)
-              if (ride) {
+              if (ride && ride.status === 'going_to_rider') {
                 info(`✅ Ground Driver #${driver.id} picked up rider for ride #${ride.id}`)
                 
                 // Calculate new path for dropoff
@@ -198,14 +199,14 @@ export const useGameLoop = () => {
             const distance = Math.sqrt(dx * dx + dy * dy)
             
             if (frameCount % 60 === 0 && distance < 200) {
-              debug(`Air Driver #${driver.id}: going_to_rider, distance=${distance.toFixed(0)}px`)
+              debug(`Air Pilot #${driver.id}: going_to_rider, distance=${distance.toFixed(0)}px`)
             }
             
             if (distance < 20) {
-              // Reached pickup - pick up rider
+              // Reached pickup - pick up rider (only if still going to rider)
               const ride = rideRequests.find(r => r.assignedDriver?.id === driver.id)
-              if (ride) {
-                info(`✅ Air Driver #${driver.id} picked up rider for ride #${ride.id}`)
+              if (ride && ride.status === 'going_to_rider') {
+                info(`✅ Air Pilot #${driver.id} picked up rider for ride #${ride.id}`)
                 
                 updateDriver(driver.id, {
                   status: 'on_ride',
@@ -262,7 +263,7 @@ export const useGameLoop = () => {
             if (!currentWaypoint) {
               // Path completed, reached dropoff
               const ride = rideRequests.find(r => r.assignedDriver?.id === driver.id)
-              if (ride) {
+              if (ride && ride.status === 'in_ride') {
                 info(`💰 Ground Ride #${ride.id} completed! Earned $${ride.fare}`)
                 
                 addEarnings(ride.fare)
@@ -337,13 +338,13 @@ export const useGameLoop = () => {
             const distance = Math.sqrt(dx * dx + dy * dy)
             
             if (frameCount % 60 === 0) {
-              debug(`Air Driver #${driver.id}: on_ride, distance=${distance.toFixed(0)}px to dropoff`)
+              debug(`Air Pilot #${driver.id}: on_ride, distance=${distance.toFixed(0)}px to dropoff`)
             }
             
             if (distance < 20) {
-              // Reached dropoff - complete ride
+              // Reached dropoff - complete ride (only if still on ride)
               const ride = rideRequests.find(r => r.assignedDriver?.id === driver.id)
-              if (ride) {
+              if (ride && ride.status === 'in_ride') {
                 info(`💰 Air Ride #${ride.id} completed! Earned $${ride.fare}`)
                 
                 addEarnings(ride.fare)

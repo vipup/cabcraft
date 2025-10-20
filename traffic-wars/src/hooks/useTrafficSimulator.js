@@ -144,7 +144,8 @@ export const useTrafficSimulator = () => {
     
     addDriver(driver)
     const emoji = driverType === 'air' ? '✈️' : '🚗'
-    info(`${emoji} Spawned ${driverType} driver #${driver.id} at (${Math.round(x)}, ${Math.round(y)})`)
+    const unitName = driverType === 'air' ? 'pilot' : 'driver'
+    info(`${emoji} Spawned ${driverType} ${unitName} #${driver.id} at (${Math.round(x)}, ${Math.round(y)})`)
   }, [worldSize, addDriver])
   
   // Create a ride request
@@ -218,7 +219,8 @@ export const useTrafficSimulator = () => {
           targetY: pickupY
         })
         const emoji = rideType === 'air' ? '✈️' : '🚗'
-        info(`${emoji} Driver #${closestDriver.id} assigned to ${rideType} ride #${ride.id}`)
+        const unitName = rideType === 'air' ? 'Pilot' : 'Driver'
+        info(`${emoji} ${unitName} #${closestDriver.id} assigned to ${rideType} ride #${ride.id}`)
       }
     }
     
