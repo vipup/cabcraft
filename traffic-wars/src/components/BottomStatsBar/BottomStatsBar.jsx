@@ -12,11 +12,13 @@ const BottomStatsBar = () => {
   }
   
   const totalAgents = drivers.length + riders.length
+  const groundDrivers = drivers.filter(d => d.type === 'ground').length
+  const airDrivers = drivers.filter(d => d.type === 'air').length
   
   return (
     <div className="bottom-stats-bar">
       <div className="stat-item">Time: {formatTime(gameTime)}</div>
-      <div className="stat-item">Agents: {totalAgents}</div>
+      <div className="stat-item">Agents: {totalAgents} (🚗 {groundDrivers} • ✈️ {airDrivers} • 🏍️ {riders.length})</div>
       <div className="stat-item">Avg Ride: 0s</div>
       <div className="stat-item">Avg Driver Dist: 0km</div>
       <div className="stat-item">Zoom: {camera.zoom.toFixed(1)}x</div>

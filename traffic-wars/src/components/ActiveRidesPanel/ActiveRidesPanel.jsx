@@ -100,6 +100,7 @@ const ActiveRidesPanel = () => {
           <thead>
             <tr>
               <th onClick={() => handleSort('id')}>ID</th>
+              <th onClick={() => handleSort('type')}>Type</th>
               <th onClick={() => handleSort('status')}>Status</th>
               <th onClick={() => handleSort('fare')}>Fare</th>
               <th>Pickup</th>
@@ -108,21 +109,25 @@ const ActiveRidesPanel = () => {
           </thead>
           <tbody>
             {filteredRides.length === 0 ? (
-              <tr><td colSpan="5">No active rides</td></tr>
+              <tr><td colSpan="6">No active rides</td></tr>
             ) : (
-              filteredRides.map(ride => (
-                <tr key={ride.id}>
-                  <td>#{ride.id}</td>
-                  <td>
-                    <span className={`status-badge ${ride.assignedDriver ? 'in-progress' : 'waiting'}`}>
-                      {ride.assignedDriver ? '🚗' : '⏳'}
-                    </span>
-                  </td>
-                  <td>${ride.fare}</td>
-                  <td>{Math.round(ride.pickupX)},{Math.round(ride.pickupY)}</td>
-                  <td>{Math.round(ride.dropoffX)},{Math.round(ride.dropoffY)}</td>
-                </tr>
-              ))
+              filteredRides.map(ride => {
+                const rideTypeEmoji = ride.type === 'air' ? '✈️' : '🚗'
+                return (
+                  <tr key={ride.id}>
+                    <td>#{ride.id}</td>
+                    <td>{rideTypeEmoji}</td>
+                    <td>
+                      <span className={`status-badge ${ride.assignedDriver ? 'in-progress' : 'waiting'}`}>
+                        {ride.assignedDriver ? '🚗' : '⏳'}
+                      </span>
+                    </td>
+                    <td>${ride.fare}</td>
+                    <td>{Math.round(ride.pickupX)},{Math.round(ride.pickupY)}</td>
+                    <td>{Math.round(ride.dropoffX)},{Math.round(ride.dropoffY)}</td>
+                  </tr>
+                )
+              })
             )}
           </tbody>
         </table>

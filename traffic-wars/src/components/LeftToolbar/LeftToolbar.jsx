@@ -16,17 +16,31 @@ const LeftToolbar = () => {
       </button>
       <button 
         className="unit-button toolbar-btn" 
-        onClick={spawnDriver}
-        title="Spawn Driver"
+        onClick={() => spawnDriver('ground')}
+        title="Spawn Ground Driver (Car)"
       >
         🚗
       </button>
       <button 
         className="unit-button toolbar-btn" 
-        onClick={createRideRequest}
-        title="Request Ride"
+        onClick={() => spawnDriver('air')}
+        title="Spawn Air Driver (Pilot)"
       >
-        📱
+        ✈️
+      </button>
+      <button 
+        className="unit-button toolbar-btn" 
+        onClick={() => createRideRequest('ground')}
+        title="Request Ground Ride (Car)"
+      >
+        🚗📱
+      </button>
+      <button 
+        className="unit-button toolbar-btn" 
+        onClick={() => createRideRequest('air')}
+        title="Request Air Ride (Flying)"
+      >
+        ✈️📱
       </button>
       <button 
         className="unit-button toolbar-btn clean-btn" 

@@ -125,24 +125,29 @@ export const useTrafficSimulator = () => {
   }, [worldSize, addRider])
   
   // Spawn a driver
-  const spawnDriver = useCallback(() => {
+  const spawnDriver = useCallback((type = null) => {
     const x = Math.random() * (worldSize.width - 200) + 100
     const y = Math.random() * (worldSize.height - 200) + 100
+    
+    // Randomly choose type if not specified (50/50 chance)
+    const driverType = type || (Math.random() < 0.5 ? 'ground' : 'air')
     
     const driver = {
       id: nextDriverId++,
       x,
       y,
+      type: driverType, // 'ground' or 'air'
       status: 'idle',
-      speed: 2
+      speed: driverType === 'air' ? 200 : 120 // Air is faster
     }
     
     addDriver(driver)
-    console.log(`🚗 Spawned driver #${driver.id} at (${Math.round(x)}, ${Math.round(y)})`)
+    const emoji = driverType === 'air' ? '✈️' : '🚗'
+    console.log(`${emoji} Spawned ${driverType} driver #${driver.id} at (${Math.round(x)}, ${Math.round(y)})`)
   }, [worldSize, addDriver])
   
   // Create a ride request
-  const createRideRequest = useCallback(() => {
+  const createRideRequest = useCallback((preferredType = null) => {
     // Find an idle rider
     const idleRiders = riders.filter(r => r.status === 'idle')
     if (idleRiders.length === 0) {
@@ -152,6 +157,9 @@ export const useTrafficSimulator = () => {
     
     const rider = idleRiders[Math.floor(Math.random() * idleRiders.length)]
     
+    // Randomly choose ride type if not specified (60% ground, 40% air)
+    const rideType = preferredType || (Math.random() < 0.6 ? 'ground' : 'air')
+    
     const pickupX = rider.x
     const pickupY = rider.y
     const dropoffX = Math.random() * (worldSize.width - 200) + 100
@@ -160,17 +168,22 @@ export const useTrafficSimulator = () => {
     const distance = Math.sqrt(
       Math.pow(dropoffX - pickupX, 2) + Math.pow(dropoffY - pickupY, 2)
     )
-    const fare = Math.round(distance * 0.1) || 10
+    
+    // Air is more expensive per km (0.15 vs 0.1)
+    const pricePerKm = rideType === 'air' ? 0.15 : 0.1
+    const fare = Math.round(distance * pricePerKm) || 10
     
     const ride = {
       id: nextRideId++,
       riderId: rider.id,
+      type: rideType, // 'ground' or 'air'
       pickupX,
       pickupY,
       dropoffX,
       dropoffY,
       fare,
       distance,
+      pricePerKm,
       assignedDriver: null,
       status: 'waiting_for_pickup',
       createdAt: Date.now()
@@ -179,8 +192,8 @@ export const useTrafficSimulator = () => {
     // Update rider status
     updateRider(rider.id, { status: 'waiting' })
     
-    // Find closest idle driver and assign
-    const idleDrivers = drivers.filter(d => d.status === 'idle')
+    // Find closest idle driver of the SAME type and assign
+    const idleDrivers = drivers.filter(d => d.status === 'idle' && d.type === rideType)
     if (idleDrivers.length > 0) {
       let closestDriver = null
       let closestDistance = Infinity
@@ -203,12 +216,14 @@ export const useTrafficSimulator = () => {
           targetX: pickupX,
           targetY: pickupY
         })
-        console.log(`🚗 Driver #${closestDriver.id} assigned to ride #${ride.id}`)
+        const emoji = rideType === 'air' ? '✈️' : '🚗'
+        console.log(`${emoji} Driver #${closestDriver.id} assigned to ${rideType} ride #${ride.id}`)
       }
     }
     
     addRideRequest(ride)
-    console.log(`📱 Created ride request #${ride.id}: $${fare}`)
+    const emoji = rideType === 'air' ? '✈️' : '🚗'
+    console.log(`📱 Created ${rideType} ride request #${ride.id}: $${fare} ${emoji}`)
   }, [worldSize, addRideRequest, riders, drivers, updateRider, updateDriver])
   
   // Clean the map

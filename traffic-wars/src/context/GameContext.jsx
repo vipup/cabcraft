@@ -33,6 +33,7 @@ export const GameProvider = ({ children }) => {
   // UI state
   const [ridesPanelHidden, setRidesPanelHidden] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState(null)
+  const [simulationSpeed, setSimulationSpeed] = useState(1.0)
   
   // Rides filtering and sorting
   const [ridesFilter, setRidesFilter] = useState({
@@ -140,6 +141,7 @@ export const GameProvider = ({ children }) => {
     activeRides,
     ridesPanelHidden,
     selectedUnit,
+    simulationSpeed,
     ridesFilter,
     ridesSort,
     
@@ -159,6 +161,7 @@ export const GameProvider = ({ children }) => {
     cleanMap,
     setRidesPanelHidden,
     setSelectedUnit,
+    setSimulationSpeed,
     setRidesFilter,
     setRidesSort,
     setBuildings,
