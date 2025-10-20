@@ -9,6 +9,7 @@ let nextRideId = 1
 export const useTrafficSimulator = () => {
   const {
     worldSize,
+    camera,
     drivers,
     riders,
     addDriver,
@@ -25,6 +26,32 @@ export const useTrafficSimulator = () => {
     setStreetNames,
     setLandmarks
   } = useGame()
+  
+  // Helper function to get current viewport bounds
+  const getViewportBounds = useCallback(() => {
+    // Calculate viewport dimensions (same logic as SVGGameCanvas)
+    const viewportWidth = window.innerWidth - 56 - 300 // left toolbar + right panel
+    const viewportHeight = window.innerHeight - 48 - 32 // top banner + bottom bar
+    
+    // Ensure viewport dimensions are positive
+    const safeViewportWidth = Math.max(100, viewportWidth)
+    const safeViewportHeight = Math.max(100, viewportHeight)
+    
+    // Calculate viewport bounds in world coordinates
+    const halfViewWidth = (safeViewportWidth / camera.zoom) / 2
+    const halfViewHeight = (safeViewportHeight / camera.zoom) / 2
+    
+    // Clamp camera position to world bounds
+    const clampedCameraX = Math.max(halfViewWidth, Math.min(worldSize.width - halfViewWidth, camera.x))
+    const clampedCameraY = Math.max(halfViewHeight, Math.min(worldSize.height - halfViewHeight, camera.y))
+    
+    return {
+      minX: Math.max(0, clampedCameraX - halfViewWidth),
+      maxX: Math.min(worldSize.width, clampedCameraX + halfViewWidth),
+      minY: Math.max(0, clampedCameraY - halfViewHeight),
+      maxY: Math.min(worldSize.height, clampedCameraY + halfViewHeight)
+    }
+  }, [camera, worldSize])
   
   // Initialize the game world
   const initializeGame = useCallback(() => {
@@ -111,8 +138,12 @@ export const useTrafficSimulator = () => {
   
   // Spawn a rider
   const spawnRider = useCallback(() => {
-    const x = Math.random() * (worldSize.width - 200) + 100
-    const y = Math.random() * (worldSize.height - 200) + 100
+    const bounds = getViewportBounds()
+    
+    // Add some padding from viewport edges (50px)
+    const padding = 50
+    const x = Math.random() * (bounds.maxX - bounds.minX - padding * 2) + bounds.minX + padding
+    const y = Math.random() * (bounds.maxY - bounds.minY - padding * 2) + bounds.minY + padding
     
     const rider = {
       id: nextRiderId++,
@@ -122,13 +153,17 @@ export const useTrafficSimulator = () => {
     }
     
     addRider(rider)
-    info(`👤 Spawned rider #${rider.id} at (${Math.round(x)}, ${Math.round(y)})`)
-  }, [worldSize, addRider])
+    info(`👤 Spawned rider #${rider.id} at (${Math.round(x)}, ${Math.round(y)}) in viewport`)
+  }, [getViewportBounds, addRider])
   
   // Spawn a driver
   const spawnDriver = useCallback((type = null) => {
-    const x = Math.random() * (worldSize.width - 200) + 100
-    const y = Math.random() * (worldSize.height - 200) + 100
+    const bounds = getViewportBounds()
+    
+    // Add some padding from viewport edges (50px)
+    const padding = 50
+    const x = Math.random() * (bounds.maxX - bounds.minX - padding * 2) + bounds.minX + padding
+    const y = Math.random() * (bounds.maxY - bounds.minY - padding * 2) + bounds.minY + padding
     
     // Randomly choose type if not specified (50/50 chance)
     const driverType = type || (Math.random() < 0.5 ? 'ground' : 'air')
@@ -145,8 +180,8 @@ export const useTrafficSimulator = () => {
     addDriver(driver)
     const emoji = driverType === 'air' ? '✈️' : '🚗'
     const unitName = driverType === 'air' ? 'pilot' : 'driver'
-    info(`${emoji} Spawned ${driverType} ${unitName} #${driver.id} at (${Math.round(x)}, ${Math.round(y)})`)
-  }, [worldSize, addDriver])
+    info(`${emoji} Spawned ${driverType} ${unitName} #${driver.id} at (${Math.round(x)}, ${Math.round(y)}) in viewport`)
+  }, [getViewportBounds, addDriver])
   
   // Create a ride request
   const createRideRequest = useCallback((preferredType = null) => {
@@ -164,8 +199,12 @@ export const useTrafficSimulator = () => {
     
     const pickupX = rider.x
     const pickupY = rider.y
-    const dropoffX = Math.random() * (worldSize.width - 200) + 100
-    const dropoffY = Math.random() * (worldSize.height - 200) + 100
+    
+    // Use viewport bounds for dropoff location
+    const bounds = getViewportBounds()
+    const padding = 50
+    const dropoffX = Math.random() * (bounds.maxX - bounds.minX - padding * 2) + bounds.minX + padding
+    const dropoffY = Math.random() * (bounds.maxY - bounds.minY - padding * 2) + bounds.minY + padding
     
     const distance = Math.sqrt(
       Math.pow(dropoffX - pickupX, 2) + Math.pow(dropoffY - pickupY, 2)
@@ -227,7 +266,7 @@ export const useTrafficSimulator = () => {
     addRideRequest(ride)
     const emoji = rideType === 'air' ? '✈️' : '🚗'
     info(`📱 Created ${rideType} ride request #${ride.id}: $${fare} ${emoji}`)
-  }, [worldSize, addRideRequest, riders, drivers, updateRider, updateDriver])
+  }, [getViewportBounds, addRideRequest, riders, drivers, updateRider, updateDriver])
   
   // Clean the map
   const cleanMap = useCallback(() => {
