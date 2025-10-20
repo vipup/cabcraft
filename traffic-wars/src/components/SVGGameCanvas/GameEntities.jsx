@@ -1,11 +1,51 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useGame } from '../../context/GameContext'
 
 const GameEntities = () => {
   const { drivers, riders, rideRequests } = useGame()
   
+  // Force re-render every frame using requestAnimationFrame
+  const [, forceUpdate] = useState(0)
+  
+  useEffect(() => {
+    let frameId
+    const animate = () => {
+      forceUpdate(n => n + 1)
+      frameId = requestAnimationFrame(animate)
+    }
+    frameId = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(frameId)
+  }, [])
+  
   return (
     <g className="game-entities">
+      {/* Path Lines */}
+      {rideRequests.map((ride) => {
+        if (!ride.assignedDriver) return null
+        
+        const driver = drivers.find(d => d.id === ride.assignedDriver.id)
+        if (!driver) return null
+        
+        // Draw path from driver to current target
+        const targetX = driver.status === 'going_to_rider' ? ride.pickupX : ride.dropoffX
+        const targetY = driver.status === 'going_to_rider' ? ride.pickupY : ride.dropoffY
+        const pathColor = driver.status === 'going_to_rider' ? '#3498db' : '#2ecc71' // Blue for pickup, Green for delivery
+        
+        return (
+          <line
+            key={`path-${ride.id}`}
+            x1={driver.x}
+            y1={driver.y}
+            x2={targetX}
+            y2={targetY}
+            stroke={pathColor}
+            strokeWidth="3"
+            strokeDasharray="10,5"
+            opacity="0.6"
+          />
+        )
+      })}
+      
       {/* Ride Request Markers */}
       {rideRequests.map((ride) => (
         <g key={`ride-${ride.id}`}>
@@ -14,8 +54,8 @@ const GameEntities = () => {
             cx={ride.pickupX}
             cy={ride.pickupY}
             r="12"
-            fill="yellow"
-            stroke="orange"
+            fill="#f1c40f"
+            stroke="#e67e22"
             strokeWidth="2"
             opacity="0.8"
           />
@@ -35,8 +75,8 @@ const GameEntities = () => {
             cx={ride.dropoffX}
             cy={ride.dropoffY}
             r="10"
-            fill="green"
-            stroke="darkgreen"
+            fill="#2ecc71"
+            stroke="#27ae60"
             strokeWidth="2"
             opacity="0.6"
           />

@@ -67,11 +67,17 @@ export const GameProvider = ({ children }) => {
   }, [])
   
   const updateDriver = useCallback((id, updates) => {
-    setDrivers(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d))
+    setDrivers(prev => {
+      const newDrivers = prev.map(d => d.id === id ? { ...d, ...updates } : d)
+      return newDrivers
+    })
   }, [])
   
   const updateRider = useCallback((id, updates) => {
-    setRiders(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r))
+    setRiders(prev => {
+      const newRiders = prev.map(r => r.id === id ? { ...r, ...updates } : r)
+      return newRiders
+    })
   }, [])
   
   const updateRideRequest = useCallback((id, updates) => {

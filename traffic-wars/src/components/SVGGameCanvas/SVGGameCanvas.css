@@ -4,7 +4,7 @@
   left: 56px;
   right: 300px;
   bottom: 32px;
-  background: #2c3e50;
+  background: #1a1a1a;
   cursor: grab;
   transition: right 0.1s ease;
 }

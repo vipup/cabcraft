@@ -8,6 +8,8 @@ let nextRideId = 1
 export const useTrafficSimulator = () => {
   const {
     worldSize,
+    drivers,
+    riders,
     addDriver,
     addRider,
     addRideRequest,
@@ -141,8 +143,17 @@ export const useTrafficSimulator = () => {
   
   // Create a ride request
   const createRideRequest = useCallback(() => {
-    const pickupX = Math.random() * (worldSize.width - 200) + 100
-    const pickupY = Math.random() * (worldSize.height - 200) + 100
+    // Find an idle rider
+    const idleRiders = riders.filter(r => r.status === 'idle')
+    if (idleRiders.length === 0) {
+      console.log('⚠️ No idle riders available!')
+      return
+    }
+    
+    const rider = idleRiders[Math.floor(Math.random() * idleRiders.length)]
+    
+    const pickupX = rider.x
+    const pickupY = rider.y
     const dropoffX = Math.random() * (worldSize.width - 200) + 100
     const dropoffY = Math.random() * (worldSize.height - 200) + 100
     
@@ -153,18 +164,52 @@ export const useTrafficSimulator = () => {
     
     const ride = {
       id: nextRideId++,
+      riderId: rider.id,
       pickupX,
       pickupY,
       dropoffX,
       dropoffY,
       fare,
+      distance,
       assignedDriver: null,
+      status: 'waiting_for_pickup',
       createdAt: Date.now()
+    }
+    
+    // Update rider status
+    updateRider(rider.id, { status: 'waiting' })
+    
+    // Find closest idle driver and assign
+    const idleDrivers = drivers.filter(d => d.status === 'idle')
+    if (idleDrivers.length > 0) {
+      let closestDriver = null
+      let closestDistance = Infinity
+      
+      idleDrivers.forEach(d => {
+        const dist = Math.sqrt(
+          Math.pow(d.x - pickupX, 2) + Math.pow(d.y - pickupY, 2)
+        )
+        if (dist < closestDistance) {
+          closestDistance = dist
+          closestDriver = d
+        }
+      })
+      
+      if (closestDriver) {
+        ride.assignedDriver = closestDriver
+        ride.status = 'going_to_rider'
+        updateDriver(closestDriver.id, {
+          status: 'going_to_rider',
+          targetX: pickupX,
+          targetY: pickupY
+        })
+        console.log(`🚗 Driver #${closestDriver.id} assigned to ride #${ride.id}`)
+      }
     }
     
     addRideRequest(ride)
     console.log(`📱 Created ride request #${ride.id}: $${fare}`)
-  }, [worldSize, addRideRequest])
+  }, [worldSize, addRideRequest, riders, drivers, updateRider, updateDriver])
   
   // Clean the map
   const cleanMap = useCallback(() => {
