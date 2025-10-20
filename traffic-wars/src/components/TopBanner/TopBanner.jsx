@@ -1,12 +1,17 @@
 import React from 'react'
 import { useGame } from '../../context/GameContext'
+import { LOG_LEVELS, LOG_LEVEL_NAMES, LOG_LEVEL_COLORS } from '../../utils/logger'
 import './TopBanner.css'
 
 const TopBanner = () => {
-  const { earnings, rating, activeRides, ridesPanelHidden, setRidesPanelHidden, selectedUnit, simulationSpeed, setSimulationSpeed } = useGame()
+  const { earnings, rating, activeRides, ridesPanelHidden, setRidesPanelHidden, selectedUnit, simulationSpeed, setSimulationSpeed, logLevel, setLogLevel } = useGame()
   
   const handleSpeedChange = (e) => {
     setSimulationSpeed(parseFloat(e.target.value))
+  }
+
+  const handleLogLevelChange = (e) => {
+    setLogLevel(parseInt(e.target.value))
   }
   
   return (
@@ -35,8 +40,28 @@ const TopBanner = () => {
         >
           📋 {ridesPanelHidden ? 'Show' : 'Hide'} Rides
         </button>
-        <div className="selected-info">
-          {selectedUnit ? `Selected: ${selectedUnit.type} #${selectedUnit.id}` : 'No units selected'}
+        <div className="log-level-selector">
+          <label htmlFor="log-level-select">Log Level:</label>
+          <select
+            id="log-level-select"
+            value={logLevel}
+            onChange={handleLogLevelChange}
+            className="log-level-select"
+            style={{ color: LOG_LEVEL_COLORS[logLevel] }}
+          >
+            <option value={LOG_LEVELS.DEBUG} style={{ color: LOG_LEVEL_COLORS[LOG_LEVELS.DEBUG] }}>
+              DEBUG
+            </option>
+            <option value={LOG_LEVELS.INFO} style={{ color: LOG_LEVEL_COLORS[LOG_LEVELS.INFO] }}>
+              INFO
+            </option>
+            <option value={LOG_LEVELS.WARNING} style={{ color: LOG_LEVEL_COLORS[LOG_LEVELS.WARNING] }}>
+              WARNING
+            </option>
+            <option value={LOG_LEVELS.ERROR} style={{ color: LOG_LEVEL_COLORS[LOG_LEVELS.ERROR] }}>
+              ERROR
+            </option>
+          </select>
         </div>
       </div>
     </div>

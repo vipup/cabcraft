@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useGame } from '../context/GameContext'
+import { debug, info, warn, error } from '../utils/logger'
 
 let nextDriverId = 1
 let nextRiderId = 1
@@ -27,7 +28,7 @@ export const useTrafficSimulator = () => {
   
   // Initialize the game world
   const initializeGame = useCallback(() => {
-    console.log('🚗 Initializing Traffic Simulator...')
+    info('🚗 Initializing Traffic Simulator...')
     
     // Create roads
     const roads = []
@@ -105,7 +106,7 @@ export const useTrafficSimulator = () => {
     ]
     setLandmarks(landmarks)
     
-    console.log('✅ Traffic Simulator initialized!')
+    info('✅ Traffic Simulator initialized!')
   }, [worldSize, setBuildings, setRoads, setStreetNames, setLandmarks])
   
   // Spawn a rider
@@ -121,7 +122,7 @@ export const useTrafficSimulator = () => {
     }
     
     addRider(rider)
-    console.log(`🏍️ Spawned rider #${rider.id} at (${Math.round(x)}, ${Math.round(y)})`)
+    info(`🏍️ Spawned rider #${rider.id} at (${Math.round(x)}, ${Math.round(y)})`)
   }, [worldSize, addRider])
   
   // Spawn a driver
@@ -143,7 +144,7 @@ export const useTrafficSimulator = () => {
     
     addDriver(driver)
     const emoji = driverType === 'air' ? '✈️' : '🚗'
-    console.log(`${emoji} Spawned ${driverType} driver #${driver.id} at (${Math.round(x)}, ${Math.round(y)})`)
+    info(`${emoji} Spawned ${driverType} driver #${driver.id} at (${Math.round(x)}, ${Math.round(y)})`)
   }, [worldSize, addDriver])
   
   // Create a ride request
@@ -151,7 +152,7 @@ export const useTrafficSimulator = () => {
     // Find an idle rider
     const idleRiders = riders.filter(r => r.status === 'idle')
     if (idleRiders.length === 0) {
-      console.log('⚠️ No idle riders available!')
+      warn('⚠️ No idle riders available!')
       return
     }
     
@@ -217,13 +218,13 @@ export const useTrafficSimulator = () => {
           targetY: pickupY
         })
         const emoji = rideType === 'air' ? '✈️' : '🚗'
-        console.log(`${emoji} Driver #${closestDriver.id} assigned to ${rideType} ride #${ride.id}`)
+        info(`${emoji} Driver #${closestDriver.id} assigned to ${rideType} ride #${ride.id}`)
       }
     }
     
     addRideRequest(ride)
     const emoji = rideType === 'air' ? '✈️' : '🚗'
-    console.log(`📱 Created ${rideType} ride request #${ride.id}: $${fare} ${emoji}`)
+    info(`📱 Created ${rideType} ride request #${ride.id}: $${fare} ${emoji}`)
   }, [worldSize, addRideRequest, riders, drivers, updateRider, updateDriver])
   
   // Clean the map
@@ -232,7 +233,7 @@ export const useTrafficSimulator = () => {
     nextDriverId = 1
     nextRiderId = 1
     nextRideId = 1
-    console.log('🧹 Map cleaned!')
+    info('🧹 Map cleaned!')
   }, [cleanMapContext])
   
   return {

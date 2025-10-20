@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useGame } from '../context/GameContext'
 import { findPath } from '../utils/pathfinding'
+import { debug, info, warn, error, logger } from '../utils/logger'
 
 export const useGameLoop = () => {
   const {
@@ -8,6 +9,7 @@ export const useGameLoop = () => {
     riders,
     rideRequests,
     simulationSpeed,
+    logLevel,
     updateDriver,
     updateRider,
     updateRideRequest,
@@ -32,15 +34,27 @@ export const useGameLoop = () => {
     addEarnings,
     setActiveRides
   }
+
+  // Update logger level when it changes
+  useEffect(() => {
+    logger.setLevel(logLevel)
+  }, [logLevel])
   
   // Helper function to assign idle drivers to waiting rides
   const assignDriverToWaitingRides = (drivers, rideRequests, updateDriver, updateRideRequest) => {
     // Find all unassigned rides
     const waitingRides = rideRequests.filter(r => !r.assignedDriver && r.status === 'waiting_for_pickup')
     
+    // Track which drivers have been assigned in this iteration
+    const assignedDriverIds = new Set()
+    
     waitingRides.forEach(ride => {
-      // Find idle drivers of the same type
-      const idleDrivers = drivers.filter(d => d.status === 'idle' && d.type === ride.type)
+      // Find idle drivers of the same type that haven't been assigned yet
+      const idleDrivers = drivers.filter(d => 
+        d.status === 'idle' && 
+        d.type === ride.type && 
+        !assignedDriverIds.has(d.id)
+      )
       
       if (idleDrivers.length > 0) {
         // Find closest driver
@@ -58,6 +72,9 @@ export const useGameLoop = () => {
         })
         
         if (closestDriver) {
+          // Mark this driver as assigned
+          assignedDriverIds.add(closestDriver.id)
+          
           // Assign driver to ride
           updateRideRequest(ride.id, {
             assignedDriver: closestDriver,
@@ -73,14 +90,14 @@ export const useGameLoop = () => {
           })
           
           const emoji = ride.type === 'air' ? '✈️' : '🚗'
-          console.log(`${emoji} Auto-assigned Driver #${closestDriver.id} to waiting ${ride.type} ride #${ride.id}`)
+          info(`${emoji} Auto-assigned Driver #${closestDriver.id} to waiting ${ride.type} ride #${ride.id}`)
         }
       }
     })
   }
   
   useEffect(() => {
-    console.log('🎮 Game Loop STARTED')
+    info('🎮 Game Loop STARTED')
     let lastTime = Date.now()
     let frameCount = 0
     
@@ -91,7 +108,7 @@ export const useGameLoop = () => {
       
       frameCount++
       if (frameCount % 60 === 0) {
-        console.log(`🎮 Game Loop running... Frame ${frameCount}, Drivers: ${gameStateRef.current.drivers.length}, Speed: ${simulationSpeedRef.current.toFixed(2)}x`)
+        debug(`🎮 Game Loop running... Frame ${frameCount}, Drivers: ${gameStateRef.current.drivers.length}, Speed: ${simulationSpeedRef.current.toFixed(2)}x`)
       }
       
       const { drivers, riders, rideRequests } = gameStateRef.current
@@ -108,7 +125,7 @@ export const useGameLoop = () => {
                 { x: driver.x, y: driver.y },
                 { x: driver.targetX, y: driver.targetY }
               )
-              console.log(`🗺️ Ground Driver #${driver.id}: Initializing path to pickup with ${path.length} waypoints`)
+              debug(`🗺️ Ground Driver #${driver.id}: Initializing path to pickup with ${path.length} waypoints`)
               updateDriver(driver.id, { path, pathIndex: 0 })
               return
             }
@@ -119,7 +136,7 @@ export const useGameLoop = () => {
               // Path completed, reached final target
               const ride = rideRequests.find(r => r.assignedDriver?.id === driver.id)
               if (ride) {
-                console.log(`✅ Ground Driver #${driver.id} picked up rider for ride #${ride.id}`)
+                info(`✅ Ground Driver #${driver.id} picked up rider for ride #${ride.id}`)
                 
                 // Calculate new path for dropoff
                 const dropoffPath = findPath(
@@ -181,14 +198,14 @@ export const useGameLoop = () => {
             const distance = Math.sqrt(dx * dx + dy * dy)
             
             if (frameCount % 60 === 0 && distance < 200) {
-              console.log(`Air Driver #${driver.id}: going_to_rider, distance=${distance.toFixed(0)}px`)
+              debug(`Air Driver #${driver.id}: going_to_rider, distance=${distance.toFixed(0)}px`)
             }
             
             if (distance < 20) {
               // Reached pickup - pick up rider
               const ride = rideRequests.find(r => r.assignedDriver?.id === driver.id)
               if (ride) {
-                console.log(`✅ Air Driver #${driver.id} picked up rider for ride #${ride.id}`)
+                info(`✅ Air Driver #${driver.id} picked up rider for ride #${ride.id}`)
                 
                 updateDriver(driver.id, {
                   status: 'on_ride',
@@ -235,7 +252,7 @@ export const useGameLoop = () => {
                   { x: driver.x, y: driver.y },
                   { x: ride.dropoffX, y: ride.dropoffY }
                 )
-                console.log(`🗺️ Ground Driver #${driver.id}: Recalculating path to dropoff with ${path.length} waypoints`)
+                debug(`🗺️ Ground Driver #${driver.id}: Recalculating path to dropoff with ${path.length} waypoints`)
                 updateDriver(driver.id, { path, pathIndex: 0 })
               }
               return
@@ -246,7 +263,7 @@ export const useGameLoop = () => {
               // Path completed, reached dropoff
               const ride = rideRequests.find(r => r.assignedDriver?.id === driver.id)
               if (ride) {
-                console.log(`💰 Ground Ride #${ride.id} completed! Earned $${ride.fare}`)
+                info(`💰 Ground Ride #${ride.id} completed! Earned $${ride.fare}`)
                 
                 addEarnings(ride.fare)
                 
@@ -320,14 +337,14 @@ export const useGameLoop = () => {
             const distance = Math.sqrt(dx * dx + dy * dy)
             
             if (frameCount % 60 === 0) {
-              console.log(`Air Driver #${driver.id}: on_ride, distance=${distance.toFixed(0)}px to dropoff`)
+              debug(`Air Driver #${driver.id}: on_ride, distance=${distance.toFixed(0)}px to dropoff`)
             }
             
             if (distance < 20) {
               // Reached dropoff - complete ride
               const ride = rideRequests.find(r => r.assignedDriver?.id === driver.id)
               if (ride) {
-                console.log(`💰 Air Ride #${ride.id} completed! Earned $${ride.fare}`)
+                info(`💰 Air Ride #${ride.id} completed! Earned $${ride.fare}`)
                 
                 addEarnings(ride.fare)
                 
@@ -400,7 +417,7 @@ export const useGameLoop = () => {
     
     // Cleanup
     return () => {
-      console.log('🎮 Game Loop STOPPED')
+      info('🎮 Game Loop STOPPED')
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { LOG_LEVELS } from '../utils/logger'
 
 const GameContext = createContext(null)
 
@@ -35,6 +36,7 @@ export const GameProvider = ({ children }) => {
   const [selectedUnit, setSelectedUnit] = useState(null)
   const [simulationSpeed, setSimulationSpeed] = useState(1.0)
   const [selectedRideId, setSelectedRideId] = useState(null)
+  const [logLevel, setLogLevel] = useState(LOG_LEVELS.INFO)
   
   // Rides filtering and sorting
   const [ridesFilter, setRidesFilter] = useState({
@@ -146,6 +148,7 @@ export const GameProvider = ({ children }) => {
     ridesFilter,
     ridesSort,
     selectedRideId,
+    logLevel,
     
     // Actions
     updateCamera,
@@ -167,6 +170,7 @@ export const GameProvider = ({ children }) => {
     setRidesFilter,
     setRidesSort,
     setSelectedRideId,
+    setLogLevel,
     setBuildings,
     setRoads,
     setStreetNames,

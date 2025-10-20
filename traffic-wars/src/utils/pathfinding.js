@@ -3,6 +3,8 @@
  * Ground drivers use this to navigate along roads
  */
 
+import { debug, info, warn, error } from './logger'
+
 // Road grid configuration (matches useTrafficSimulator.js)
 const WORLD_WIDTH = 2400
 const WORLD_HEIGHT = 1600
@@ -98,12 +100,12 @@ export function findPath(start, goal) {
   const startNode = findNearestIntersection(start.x, start.y)
   const goalNode = findNearestIntersection(goal.x, goal.y)
   
-  console.log(`🔍 Pathfinding from (${start.x.toFixed(0)}, ${start.y.toFixed(0)}) to (${goal.x.toFixed(0)}, ${goal.y.toFixed(0)})`)
-  console.log(`📍 Start intersection: (${startNode.x}, ${startNode.y}), Goal intersection: (${goalNode.x}, ${goalNode.y})`)
+  debug(`🔍 Pathfinding from (${start.x.toFixed(0)}, ${start.y.toFixed(0)}) to (${goal.x.toFixed(0)}, ${goal.y.toFixed(0)})`)
+  debug(`📍 Start intersection: (${startNode.x}, ${startNode.y}), Goal intersection: (${goalNode.x}, ${goalNode.y})`)
   
   // If start and goal are the same intersection, return direct path
   if (startNode.x === goalNode.x && startNode.y === goalNode.y) {
-    console.log('✅ Start and goal are the same intersection')
+    debug('✅ Start and goal are the same intersection')
     return [startNode, goalNode]
   }
   
@@ -151,25 +153,25 @@ export function findPath(start, goal) {
     
     // Check neighbors
     const neighbors = getNeighbors(current.x, current.y)
-    console.log(`🔎 Current: (${current.x}, ${current.y}), Neighbors: ${neighbors.length}, OpenSet size: ${openSet.length}`)
+    debug(`🔎 Current: (${current.x}, ${current.y}), Neighbors: ${neighbors.length}, OpenSet size: ${openSet.length}`)
     
     for (const neighbor of neighbors) {
       // Skip if already evaluated
       if (closedSet.has(key(neighbor.x, neighbor.y))) {
-        console.log(`   ⏭️ Skipping closed neighbor: (${neighbor.x}, ${neighbor.y})`)
+        debug(`   ⏭️ Skipping closed neighbor: (${neighbor.x}, ${neighbor.y})`)
         continue
       }
       
       const currentG = gScore.get(key(current.x, current.y))
       if (currentG === undefined) {
-        console.error(`❌ ERROR: No gScore for current node (${current.x}, ${current.y})!`)
+        error(`❌ ERROR: No gScore for current node (${current.x}, ${current.y})!`)
         continue
       }
       
       const tentativeG = currentG + manhattanDistance(current.x, current.y, neighbor.x, neighbor.y)
       
       const currentNeighborG = gScore.get(key(neighbor.x, neighbor.y))
-      console.log(`   🔍 Neighbor (${neighbor.x}, ${neighbor.y}): tentativeG=${tentativeG.toFixed(0)}, currentG=${currentNeighborG || 'undefined'}`)
+      debug(`   🔍 Neighbor (${neighbor.x}, ${neighbor.y}): tentativeG=${tentativeG.toFixed(0)}, currentG=${currentNeighborG || 'undefined'}`)
       
       if (tentativeG < (currentNeighborG || Infinity)) {
         cameFrom.set(key(neighbor.x, neighbor.y), current)
@@ -179,17 +181,17 @@ export function findPath(start, goal) {
         // Add to open set if not already there
         if (!openSet.some(n => n.x === neighbor.x && n.y === neighbor.y)) {
           openSet.push(neighbor)
-          console.log(`   ✅ Added to openSet: (${neighbor.x}, ${neighbor.y})`)
+          debug(`   ✅ Added to openSet: (${neighbor.x}, ${neighbor.y})`)
         } else {
-          console.log(`   ℹ️ Already in openSet: (${neighbor.x}, ${neighbor.y})`)
+          debug(`   ℹ️ Already in openSet: (${neighbor.x}, ${neighbor.y})`)
         }
       }
     }
-    console.log(`📊 End of iteration: OpenSet size = ${openSet.length}`)
+    debug(`📊 End of iteration: OpenSet size = ${openSet.length}`)
   }
   
   // No path found - return direct path as fallback
-  console.warn('⚠️ No path found, using direct route')
+  warn('⚠️ No path found, using direct route')
   return [startNode, goalNode]
 }
 
