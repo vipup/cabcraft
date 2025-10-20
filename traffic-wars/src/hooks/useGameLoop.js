@@ -33,6 +33,52 @@ export const useGameLoop = () => {
     setActiveRides
   }
   
+  // Helper function to assign idle drivers to waiting rides
+  const assignDriverToWaitingRides = (drivers, rideRequests, updateDriver, updateRideRequest) => {
+    // Find all unassigned rides
+    const waitingRides = rideRequests.filter(r => !r.assignedDriver && r.status === 'waiting_for_pickup')
+    
+    waitingRides.forEach(ride => {
+      // Find idle drivers of the same type
+      const idleDrivers = drivers.filter(d => d.status === 'idle' && d.type === ride.type)
+      
+      if (idleDrivers.length > 0) {
+        // Find closest driver
+        let closestDriver = null
+        let closestDistance = Infinity
+        
+        idleDrivers.forEach(driver => {
+          const dist = Math.sqrt(
+            Math.pow(driver.x - ride.pickupX, 2) + Math.pow(driver.y - ride.pickupY, 2)
+          )
+          if (dist < closestDistance) {
+            closestDistance = dist
+            closestDriver = driver
+          }
+        })
+        
+        if (closestDriver) {
+          // Assign driver to ride
+          updateRideRequest(ride.id, {
+            assignedDriver: closestDriver,
+            status: 'going_to_rider'
+          })
+          
+          updateDriver(closestDriver.id, {
+            status: 'going_to_rider',
+            targetX: ride.pickupX,
+            targetY: ride.pickupY,
+            path: undefined,
+            pathIndex: undefined
+          })
+          
+          const emoji = ride.type === 'air' ? '✈️' : '🚗'
+          console.log(`${emoji} Auto-assigned Driver #${closestDriver.id} to waiting ${ride.type} ride #${ride.id}`)
+        }
+      }
+    })
+  }
+  
   useEffect(() => {
     console.log('🎮 Game Loop STARTED')
     let lastTime = Date.now()
@@ -224,6 +270,9 @@ export const useGameLoop = () => {
                 }
                 
                 removeRideRequest(ride.id)
+                
+                // Check for waiting rides and assign this now-idle driver
+                assignDriverToWaitingRides(drivers, rideRequests, updateDriver, updateRideRequest)
               }
               return
             }
@@ -300,6 +349,9 @@ export const useGameLoop = () => {
                 }
                 
                 removeRideRequest(ride.id)
+                
+                // Check for waiting rides and assign this now-idle driver
+                assignDriverToWaitingRides(drivers, rideRequests, updateDriver, updateRideRequest)
               }
             } else {
               // Move towards target
@@ -334,6 +386,11 @@ export const useGameLoop = () => {
       // Update active rides count
       const activeCount = rideRequests.filter(r => r.assignedDriver).length
       setActiveRides(activeCount)
+      
+      // Periodically check for unassigned rides (every 60 frames = ~1 second)
+      if (frameCount % 60 === 0) {
+        assignDriverToWaitingRides(drivers, rideRequests, updateDriver, updateRideRequest)
+      }
       
       animationFrameRef.current = requestAnimationFrame(gameLoop)
     }
