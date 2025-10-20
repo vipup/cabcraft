@@ -6,11 +6,16 @@ import './SVGGameCanvas.css'
 
 const SVGGameCanvas = () => {
   const svgRef = useRef(null)
-  const { worldSize, camera, updateCamera } = useGame()
+  const { worldSize, camera, updateCamera, selectedRideId, setSelectedRideId, rideRequests, drivers } = useGame()
   const [isDragging, setIsDragging] = React.useState(false)
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 })
+  const trackingIntervalRef = useRef(null)
   
   const handleMouseDown = (e) => {
+    // Clear ride selection when manually dragging
+    if (selectedRideId) {
+      setSelectedRideId(null)
+    }
     setIsDragging(true)
     setDragStart({ x: e.clientX, y: e.clientY })
   }
@@ -47,6 +52,45 @@ const SVGGameCanvas = () => {
     svg.addEventListener('wheel', handleWheel, { passive: false })
     return () => svg.removeEventListener('wheel', handleWheel)
   }, [camera.zoom])
+  
+  // Camera tracking for selected ride
+  useEffect(() => {
+    if (!selectedRideId) {
+      if (trackingIntervalRef.current) {
+        clearInterval(trackingIntervalRef.current)
+        trackingIntervalRef.current = null
+      }
+      return
+    }
+    
+    // Track the driver of the selected ride
+    const trackDriver = () => {
+      const ride = rideRequests.find(r => r.id === selectedRideId)
+      if (!ride || !ride.assignedDriver) return
+      
+      const driver = drivers.find(d => d.id === ride.assignedDriver.id)
+      if (!driver) return
+      
+      // Update camera to center on driver
+      updateCamera({
+        x: driver.x,
+        y: driver.y
+      })
+    }
+    
+    // Track immediately
+    trackDriver()
+    
+    // Then track every frame (60 FPS)
+    trackingIntervalRef.current = setInterval(trackDriver, 16)
+    
+    return () => {
+      if (trackingIntervalRef.current) {
+        clearInterval(trackingIntervalRef.current)
+        trackingIntervalRef.current = null
+      }
+    }
+  }, [selectedRideId, rideRequests, drivers, updateCamera])
   
   // Calculate viewBox based on camera
   const viewportWidth = window.innerWidth - 56 - 300 // left toolbar + right panel

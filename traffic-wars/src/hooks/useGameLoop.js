@@ -57,11 +57,12 @@ export const useGameLoop = () => {
           // Ground drivers use pathfinding, air drivers fly directly
           if (driver.type === 'ground') {
             // Initialize path if not exists
-            if (!driver.path || driver.path.length === 0) {
+            if (!driver.path || driver.path.length === 0 || driver.pathIndex === undefined) {
               const path = findPath(
                 { x: driver.x, y: driver.y },
                 { x: driver.targetX, y: driver.targetY }
               )
+              console.log(`🗺️ Ground Driver #${driver.id}: Initializing path to pickup with ${path.length} waypoints`)
               updateDriver(driver.id, { path, pathIndex: 0 })
               return
             }
@@ -180,7 +181,7 @@ export const useGameLoop = () => {
           // Ground drivers use pathfinding, air drivers fly directly
           if (driver.type === 'ground') {
             // Follow waypoints for dropoff
-            if (!driver.path || driver.path.length === 0) {
+            if (!driver.path || driver.path.length === 0 || driver.pathIndex === undefined) {
               // Path should have been set during pickup, but recalculate if missing
               const ride = rideRequests.find(r => r.assignedDriver?.id === driver.id)
               if (ride) {
@@ -188,6 +189,7 @@ export const useGameLoop = () => {
                   { x: driver.x, y: driver.y },
                   { x: ride.dropoffX, y: ride.dropoffY }
                 )
+                console.log(`🗺️ Ground Driver #${driver.id}: Recalculating path to dropoff with ${path.length} waypoints`)
                 updateDriver(driver.id, { path, pathIndex: 0 })
               }
               return

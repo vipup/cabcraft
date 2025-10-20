@@ -34,6 +34,7 @@ export const GameProvider = ({ children }) => {
   const [ridesPanelHidden, setRidesPanelHidden] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState(null)
   const [simulationSpeed, setSimulationSpeed] = useState(1.0)
+  const [selectedRideId, setSelectedRideId] = useState(null)
   
   // Rides filtering and sorting
   const [ridesFilter, setRidesFilter] = useState({
@@ -144,6 +145,7 @@ export const GameProvider = ({ children }) => {
     simulationSpeed,
     ridesFilter,
     ridesSort,
+    selectedRideId,
     
     // Actions
     updateCamera,
@@ -164,6 +166,7 @@ export const GameProvider = ({ children }) => {
     setSimulationSpeed,
     setRidesFilter,
     setRidesSort,
+    setSelectedRideId,
     setBuildings,
     setRoads,
     setStreetNames,

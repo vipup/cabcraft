@@ -3,7 +3,7 @@ import { useGame } from '../../context/GameContext'
 import './ActiveRidesPanel.css'
 
 const ActiveRidesPanel = () => {
-  const { rideRequests, ridesFilter, ridesSort, setRidesFilter, setRidesSort } = useGame()
+  const { rideRequests, ridesFilter, ridesSort, selectedRideId, setRidesFilter, setRidesSort, setSelectedRideId } = useGame()
   
   const handleSearchChange = (e) => {
     setRidesFilter({ ...ridesFilter, search: e.target.value.toLowerCase() })
@@ -113,8 +113,13 @@ const ActiveRidesPanel = () => {
             ) : (
               filteredRides.map(ride => {
                 const rideTypeEmoji = ride.type === 'air' ? '✈️' : '🚗'
+                const isSelected = selectedRideId === ride.id
                 return (
-                  <tr key={ride.id}>
+                  <tr 
+                    key={ride.id} 
+                    className={isSelected ? 'selected-row' : ''}
+                    onClick={() => setSelectedRideId(isSelected ? null : ride.id)}
+                  >
                     <td>#{ride.id}</td>
                     <td>{rideTypeEmoji}</td>
                     <td>

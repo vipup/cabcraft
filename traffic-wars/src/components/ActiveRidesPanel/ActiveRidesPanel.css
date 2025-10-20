@@ -116,8 +116,22 @@
   border-bottom: 1px solid #2c3e50;
 }
 
-.rides-table tr:hover {
-  background: #2c3e50;
+.rides-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.rides-table tbody tr:hover {
+  background: #34495e;
+}
+
+.rides-table tbody tr.selected-row {
+  background: #3498db;
+  font-weight: bold;
+}
+
+.rides-table tbody tr.selected-row:hover {
+  background: #2980b9;
 }
 
 .status-badge {
