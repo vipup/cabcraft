@@ -1,0 +1,15 @@
+.game-svg {
+  position: absolute;
+  top: 48px;
+  left: 56px;
+  right: 300px;
+  bottom: 32px;
+  background: #2c3e50;
+  cursor: grab;
+  transition: right 0.1s ease;
+}
+
+.game-svg.dragging {
+  cursor: grabbing;
+}
+
