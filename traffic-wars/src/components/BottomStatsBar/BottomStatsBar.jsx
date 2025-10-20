@@ -28,7 +28,7 @@ const BottomStatsBar = () => {
   return (
     <div className="bottom-stats-bar">
       <div className="stat-item">Time: {formatTime(gameTime)}</div>
-      <div className="stat-item">Agents: {totalAgents} (🚗 {groundDrivers} • ✈️ {airDrivers} • 🏍️ {riders.length})</div>
+      <div className="stat-item">Agents: {totalAgents} (🚗 {groundDrivers} • ✈️ {airDrivers} • 👤 {riders.length})</div>
       <div className="stat-item">Avg Ride: {avgRideTime}s</div>
       <div className="stat-item">Avg Driver Dist: {avgDriverDistance}km</div>
       <div className="stat-item">Zoom: {camera.zoom.toFixed(1)}x</div>

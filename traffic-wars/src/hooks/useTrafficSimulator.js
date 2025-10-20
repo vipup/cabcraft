@@ -122,7 +122,7 @@ export const useTrafficSimulator = () => {
     }
     
     addRider(rider)
-    info(`🏍️ Spawned rider #${rider.id} at (${Math.round(x)}, ${Math.round(y)})`)
+    info(`👤 Spawned rider #${rider.id} at (${Math.round(x)}, ${Math.round(y)})`)
   }, [worldSize, addRider])
   
   // Spawn a driver

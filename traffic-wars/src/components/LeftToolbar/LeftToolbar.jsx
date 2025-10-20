@@ -12,7 +12,7 @@ const LeftToolbar = () => {
         onClick={spawnRider}
         title="Spawn Rider"
       >
-        🏍️
+        👤
       </button>
       <button 
         className="unit-button toolbar-btn" 

@@ -153,7 +153,7 @@ const GameEntities = () => {
             fontSize="12"
             textAnchor="middle"
           >
-            🏍️
+            👤
           </text>
         </g>
       ))}
