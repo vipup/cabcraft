@@ -31,6 +31,10 @@ export const GameProvider = ({ children }) => {
   const [rating, setRating] = useState(5.0)
   const [activeRides, setActiveRides] = useState(0)
   
+  // Ride statistics tracking
+  const [completedRides, setCompletedRides] = useState([])
+  const [totalDriverDistance, setTotalDriverDistance] = useState(0)
+  
   // UI state
   const [ridesPanelHidden, setRidesPanelHidden] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState(null)
@@ -109,6 +113,15 @@ export const GameProvider = ({ children }) => {
     setRating(newRating)
   }, [])
   
+  // Ride statistics tracking
+  const addCompletedRide = useCallback((rideData) => {
+    setCompletedRides(prev => [...prev, rideData])
+  }, [])
+  
+  const addDriverDistance = useCallback((distance) => {
+    setTotalDriverDistance(prev => prev + distance)
+  }, [])
+  
   // Clean map
   const cleanMap = useCallback(() => {
     setDrivers([])
@@ -117,6 +130,8 @@ export const GameProvider = ({ children }) => {
     setEarnings(0)
     setRating(5.0)
     setActiveRides(0)
+    setCompletedRides([])
+    setTotalDriverDistance(0)
   }, [])
   
   // Game time ticker
@@ -142,6 +157,8 @@ export const GameProvider = ({ children }) => {
     earnings,
     rating,
     activeRides,
+    completedRides,
+    totalDriverDistance,
     ridesPanelHidden,
     selectedUnit,
     simulationSpeed,
@@ -163,6 +180,8 @@ export const GameProvider = ({ children }) => {
     removeRideRequest,
     addEarnings,
     updateRating,
+    addCompletedRide,
+    addDriverDistance,
     cleanMap,
     setRidesPanelHidden,
     setSelectedUnit,

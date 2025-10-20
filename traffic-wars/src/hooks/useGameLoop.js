@@ -15,7 +15,9 @@ export const useGameLoop = () => {
     updateRideRequest,
     removeRideRequest,
     addEarnings,
-    setActiveRides
+    setActiveRides,
+    addCompletedRide,
+    addDriverDistance
   } = useGame()
   
   const animationFrameRef = useRef(null)
@@ -235,9 +237,18 @@ export const useGameLoop = () => {
               const moveDistance = speed * deltaTime
               const ratio = Math.min(moveDistance / distance, 1)
               
+              const newX = driver.x + dx * ratio
+              const newY = driver.y + dy * ratio
+              
+              // Track driver distance
+              const distanceMoved = Math.sqrt(
+                Math.pow(newX - driver.x, 2) + Math.pow(newY - driver.y, 2)
+              )
+              addDriverDistance(distanceMoved)
+              
               updateDriver(driver.id, {
-                x: driver.x + dx * ratio,
-                y: driver.y + dy * ratio
+                x: newX,
+                y: newY
               })
             }
           }
@@ -265,6 +276,21 @@ export const useGameLoop = () => {
               const ride = rideRequests.find(r => r.assignedDriver?.id === driver.id)
               if (ride && ride.status === 'in_ride') {
                 info(`💰 Ground Ride #${ride.id} completed! Earned $${ride.fare}`)
+                
+                // Track ride completion statistics
+                const rideDuration = Math.round((Date.now() - ride.createdAt) / 1000) // Convert to seconds
+                const rideDistance = Math.sqrt(
+                  Math.pow(ride.dropoffX - ride.pickupX, 2) + 
+                  Math.pow(ride.dropoffY - ride.pickupY, 2)
+                )
+                
+                addCompletedRide({
+                  id: ride.id,
+                  type: ride.type,
+                  duration: rideDuration,
+                  distance: rideDistance,
+                  fare: ride.fare
+                })
                 
                 addEarnings(ride.fare)
                 
@@ -314,6 +340,12 @@ export const useGameLoop = () => {
               const newX = driver.x + dx * ratio
               const newY = driver.y + dy * ratio
               
+              // Track driver distance
+              const distanceMoved = Math.sqrt(
+                Math.pow(newX - driver.x, 2) + Math.pow(newY - driver.y, 2)
+              )
+              addDriverDistance(distanceMoved)
+              
               updateDriver(driver.id, {
                 x: newX,
                 y: newY
@@ -347,6 +379,21 @@ export const useGameLoop = () => {
               if (ride && ride.status === 'in_ride') {
                 info(`💰 Air Ride #${ride.id} completed! Earned $${ride.fare}`)
                 
+                // Track ride completion statistics
+                const rideDuration = Math.round((Date.now() - ride.createdAt) / 1000) // Convert to seconds
+                const rideDistance = Math.sqrt(
+                  Math.pow(ride.dropoffX - ride.pickupX, 2) + 
+                  Math.pow(ride.dropoffY - ride.pickupY, 2)
+                )
+                
+                addCompletedRide({
+                  id: ride.id,
+                  type: ride.type,
+                  duration: rideDuration,
+                  distance: rideDistance,
+                  fare: ride.fare
+                })
+                
                 addEarnings(ride.fare)
                 
                 updateDriver(driver.id, {
@@ -379,6 +426,12 @@ export const useGameLoop = () => {
               
               const newX = driver.x + dx * ratio
               const newY = driver.y + dy * ratio
+              
+              // Track driver distance
+              const distanceMoved = Math.sqrt(
+                Math.pow(newX - driver.x, 2) + Math.pow(newY - driver.y, 2)
+              )
+              addDriverDistance(distanceMoved)
               
               updateDriver(driver.id, {
                 x: newX,
