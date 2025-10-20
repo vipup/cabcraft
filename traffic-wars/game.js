@@ -52,6 +52,7 @@ class TrafficSimulatorSVG {
         this.zoom = 1.0;
         this.viewportWidth = 0;
         this.viewportHeight = 0;
+        this.ridesPanelHidden = false;
         
         // Input state
         this.isDragging = false;
@@ -128,8 +129,10 @@ class TrafficSimulatorSVG {
         this.gameSVG.setAttribute('width', this.viewportWidth.toString());
         // Don't set height attribute - let CSS bottom constraint control the height
         
-        // Calculate available height (window height minus bottom panel height)
-        const availableHeight = window.innerHeight - 140; // 140px for bottom panel
+        // Calculate available height = window - top banner - bottom bar
+        const topBanner = 48; // px
+        const bottomBar = 32; // px
+        const availableHeight = window.innerHeight - topBanner - bottomBar;
         
         // Update SVG viewBox to show the current camera view
         const viewBoxX = this.cameraX - this.viewportWidth / (2 * this.zoom);
@@ -494,6 +497,24 @@ class TrafficSimulatorSVG {
         document.getElementById('clean-map').addEventListener('click', () => {
             this.cleanupMap();
         });
+
+        // Toggle Active Rides panel visibility
+        const ridesPanel = document.getElementById('rides-panel');
+        const gameSvg = document.getElementById('game-svg');
+        const toggleBtn = document.getElementById('toggle-rides');
+        if (toggleBtn && ridesPanel && gameSvg) {
+            toggleBtn.addEventListener('click', () => {
+                this.ridesPanelHidden = !this.ridesPanelHidden;
+                if (this.ridesPanelHidden) {
+                    ridesPanel.style.display = 'none';
+                    gameSvg.style.right = '0px';
+                } else {
+                    ridesPanel.style.display = 'block';
+                    gameSvg.style.right = (this.panelSizes?.rightPanelWidth || 300) + 'px';
+                }
+                this.updateViewportSize();
+            });
+        }
         
         // Search input
         document.getElementById('rides-search').addEventListener('input', (event) => {
@@ -1401,7 +1422,8 @@ class TrafficSimulatorSVG {
                 cameraPos: document.getElementById('camera-pos'),
                 mapAvg: document.getElementById('map-avg'),
                 avgDriverDistance: document.getElementById('avg-driver-distance'),
-                ridesTableBody: document.getElementById('rides-table-body')
+                ridesTableBody: document.getElementById('rides-table-body'),
+                bannerAchievements: document.getElementById('banner-achievements')
             };
             this.lastUIValues = {};
             
@@ -1421,7 +1443,7 @@ class TrafficSimulatorSVG {
             
             // Panel resize state
             this.panelSizes = {
-                bottomPanelHeight: 140,
+                bottomPanelHeight: 36,
                 rightPanelWidth: 300
             };
             
@@ -1514,6 +1536,15 @@ class TrafficSimulatorSVG {
         
         // Update rides table
         this.updateRidesTable();
+
+        // Update floating banner achievements summary
+        if (this.uiElements.bannerAchievements) {
+            const bannerText = `$${newEarnings} • ⭐${this.rating.toFixed(1)} • Active ${this.activeRides}`;
+            if (this.lastUIValues.bannerText !== bannerText) {
+                this.uiElements.bannerAchievements.textContent = bannerText;
+                this.lastUIValues.bannerText = bannerText;
+            }
+        }
     }
     
     updateRidesTable() {

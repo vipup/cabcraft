@@ -26,23 +26,23 @@
 
         #game-svg {
             position: absolute;
-            top: 0;
-            left: 0;
+            top: 48px; /* leave space for floating banner */
+            left: 56px; /* leave space for left toolbar */
             right: 300px; /* Dynamic width based on rides panel */
-            bottom: 140px; /* Dynamic height based on UI panel */
+            bottom: 32px; /* Slim stats bar */
             background: #2c3e50;
             cursor: grab;
-            transition: right 0.1s ease, bottom 0.1s ease;
+            transition: right 0.1s ease, bottom 0.1s ease, left 0.1s ease, top 0.1s ease;
         }
         
         #rides-panel {
             position: absolute;
-            top: 0;
+            top: 48px;
             right: 0;
             width: 300px;
             min-width: 200px;
             max-width: 600px;
-            height: calc(100vh - 140px);
+            height: calc(100vh - 80px); /* 48px top banner + 32px bottom bar */
             background: #34495e;
             border-left: 2px solid #2c3e50;
             padding: 10px;
@@ -493,24 +493,24 @@
             cursor: grabbing;
         }
 
+        /* Slim one-line stats bar */
         #ui-panel {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            height: 140px;
-            min-height: 100px;
-            max-height: 300px;
-            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
-            border-top: 3px solid #3498db;
+            height: 32px;
+            min-height: 32px;
+            max-height: 32px;
+            background: #2c3e50;
+            border-top: 2px solid #3498db;
             display: flex;
             align-items: center;
-            padding: 10px;
-            gap: 15px;
-            box-shadow: 0 -5px 15px rgba(0,0,0,0.3);
-            transition: height 0.1s ease;
+            padding: 4px 10px;
+            gap: 12px;
+            overflow: hidden;
+            z-index: 10;
         }
-
 
         .ui-section {
             display: flex;
@@ -522,11 +522,22 @@
         }
 
         .resource-display {
-            background: rgba(52, 73, 94, 0.8);
-            padding: 4px 8px;
-            border-radius: 4px;
-            border: 1px solid #34495e;
-            font-size: 12px;
+            background: transparent;
+            padding: 0px 8px;
+            border-radius: 0px;
+            border: none;
+            border-right: 1px solid #34495e;
+            font-size: 11px;
+            color: #bdc3c7;
+            white-space: nowrap;
+            line-height: 24px;
+            height: 24px;
+        }
+        
+        .resource-display:last-child {
+            border-right: none;
+            margin-left: auto;
+            font-weight: bold;
             color: #ecf0f1;
         }
 
@@ -573,66 +584,37 @@
 </head>
 <body>
     <div id="game-container">
-        <div id="ui-panel">
-            <!-- Left: Game Title and Resources -->
-            <div class="ui-section" style="align-items:flex-start; min-width: 250px;">
-                <h2 style="margin: 0 0 12px 0; color: #ecf0f1; font-size: 20px;">🚗 Traffic Simulator</h2>
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <div class="resource-display">
-                        <span>💰 Earnings: <span id="earnings">0</span></span>
-                    </div>
-                    <div class="resource-display">
-                        <span>📊 Rating: <span id="rating">5.0</span></span>
-                    </div>
-                    <div class="resource-display">
-                        <span>🚗 Active Rides: <span id="active-rides">0</span></span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Center: Map Information Panel -->
-            <div class="ui-section" style="align-items:flex-start; min-width: 300px;">
-                <h3 style="margin: 0 0 12px 0; color: #3498db; font-size: 16px;">Game Statistics</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                    <div class="resource-display">
-                        <span>Time: <span id="map-time">0:00</span></span>
-                    </div>
-                    <div class="resource-display">
-                        <span>Agents: <span id="map-agents">0</span></span>
-                    </div>
-                    <div class="resource-display">
-                        <span>Avg Ride: <span id="map-avg">0s</span></span>
-                    </div>
-                    <div class="resource-display">
-                        <span>Avg Driver Dist: <span id="avg-driver-distance">0km</span></span>
-                    </div>
-                    <div class="resource-display">
-                        <span>Zoom: <span id="zoom-level">1.0x</span></span>
-                    </div>
-                    <div class="resource-display">
-                        <span>Camera: <span id="camera-pos">1200, 800</span></span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Right: Commands / Selection -->
-            <div class="ui-section" style="justify-content:flex-end; gap:12px; min-width: 300px;">
-                <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
-                    <div style="display: flex; gap: 8px;">
-                        <button class="unit-button" id="spawn-rider">🏍️ Spawn Rider</button>
-                        <button class="unit-button" id="spawn-driver">🚗 Spawn Driver</button>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="unit-button" id="request-ride">📱 Request Ride</button>
-                        <button class="unit-button" id="clean-map" style="background-color: #e74c3c; color: white;">🧹 Clean Map</button>
-                    </div>
-                </div>
-                <div class="selected-info" id="selected-info">No units selected</div>
+        <!-- Floating top banner -->
+        <div id="top-banner" style="position:absolute; top:0; left:0; right:0; height:48px; background:#1f2d3a; border-bottom:2px solid #3498db; display:flex; align-items:center; padding:0 12px; gap:12px; z-index:5;">
+            <div style="font-weight:bold; color:#ecf0f1;">🚗 Traffic Simulator</div>
+            <div id="banner-achievements" style="color:#bdc3c7; font-size:13px;">$0 • ⭐5.0 • Active 0</div>
+            <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+                <button id="toggle-rides" class="unit-button" style="padding:6px 10px; font-size:12px;">📋 Toggle Rides</button>
+                <div class="selected-info" id="selected-info" style="margin-left:8px;">No units selected</div>
             </div>
         </div>
+
+        <!-- Left vertical toolbar -->
+        <div id="left-toolbar" style="position:absolute; top:48px; bottom:32px; left:0; width:56px; background:#1f2d3a; border-right:2px solid #2c3e50; display:flex; flex-direction:column; align-items:center; padding:8px 6px; gap:10px; z-index:4;">
+            <button title="Spawn Rider" class="unit-button" id="spawn-rider" style="width:42px; height:42px; border-radius:8px; font-size:20px; padding:0;">🏍️</button>
+            <button title="Spawn Driver" class="unit-button" id="spawn-driver" style="width:42px; height:42px; border-radius:8px; font-size:20px; padding:0;">🚗</button>
+            <button title="Request Ride" class="unit-button" id="request-ride" style="width:42px; height:42px; border-radius:8px; font-size:20px; padding:0;">📱</button>
+            <button title="Clean Map" class="unit-button" id="clean-map" style="width:42px; height:42px; border-radius:8px; font-size:20px; padding:0; background:#e74c3c;">🧹</button>
+        </div>
+
+        <!-- Slim one-line bottom stats bar -->
+        <div id="ui-panel">
+            <div class="resource-display">Time: <span id="map-time">0:00</span></div>
+            <div class="resource-display">Agents: <span id="map-agents">0</span></div>
+            <div class="resource-display">Avg Ride: <span id="map-avg">0s</span></div>
+            <div class="resource-display">Avg Driver Dist: <span id="avg-driver-distance">0km</span></div>
+            <div class="resource-display">Zoom: <span id="zoom-level">1.0x</span></div>
+            <div class="resource-display">Camera: <span id="camera-pos">1200, 800</span></div>
+            <div class="resource-display" style="margin-left:auto;">💰 <span id="earnings">0</span> • ⭐ <span id="rating">5.0</span> • 🚗 Active <span id="active-rides">0</span></div>
+        </div>
         
-        <!-- Resize handle for bottom panel -->
-        <div id="bottom-resize-handle" class="resize-handle horizontal"></div>
+        <!-- Resize handle for bottom panel (kept but positioned at new height) -->
+        <div id="bottom-resize-handle" class="resize-handle horizontal" style="bottom:32px;"></div>
         
         <svg id="game-svg" viewBox="0 0 2400 1600"></svg>
         
