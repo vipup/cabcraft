@@ -48,7 +48,7 @@ class TrafficSimulatorSVG {
         
         // Camera/viewport
         this.cameraX = 1200;
-        this.cameraY = 800;
+        this.cameraY = 500; // Start at y=500 to show roads that start at y=84
         this.zoom = 1.0;
         this.viewportWidth = 0;
         this.viewportHeight = 0;
@@ -126,15 +126,18 @@ class TrafficSimulatorSVG {
         this.viewportWidth = rect.width;
         this.viewportHeight = rect.height;
         
-        // Ensure SVG has proper dimensions
+        // Ensure SVG has proper width (height is controlled by CSS bottom constraint)
         this.gameSVG.setAttribute('width', this.viewportWidth.toString());
-        this.gameSVG.setAttribute('height', this.viewportHeight.toString());
+        // Don't set height attribute - let CSS bottom constraint control the height
+        
+        // Calculate available height (window height minus bottom panel height)
+        const availableHeight = window.innerHeight - 140; // 140px for bottom panel
         
         // Update SVG viewBox to show the current camera view
         const viewBoxX = this.cameraX - this.viewportWidth / (2 * this.zoom);
-        const viewBoxY = this.cameraY - this.viewportHeight / (2 * this.zoom);
+        const viewBoxY = this.cameraY - availableHeight / (2 * this.zoom);
         const viewBoxWidth = this.viewportWidth / this.zoom;
-        const viewBoxHeight = this.viewportHeight / this.zoom;
+        const viewBoxHeight = availableHeight / this.zoom;
         
         this.gameSVG.setAttribute('viewBox', `${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`);
     }
@@ -182,28 +185,88 @@ class TrafficSimulatorSVG {
     }
 
     createBuildings() {
-        // Create buildings in grid pattern between roads
-        for (let x = 50; x < this.worldWidth - 50; x += 120) {
-            for (let y = 50; y < this.worldHeight - 50; y += 120) {
-                // Skip if on road
-                if (this.isOnRoad(x, y)) continue;
+        // Create buildings in a more strategic pattern
+        // Place buildings in the center of city blocks, avoiding roads
+        
+        // Calculate city block centers
+        for (let blockX = 0; blockX < 15; blockX++) { // 15 blocks horizontally
+            for (let blockY = 0; blockY < 13; blockY++) { // 13 blocks vertically
+                // Calculate block center position
+                const blockCenterX = 100 + blockX * 140 + 70; // Center of block
+                const blockCenterY = 100 + blockY * 100 + 50; // Center of block
                 
-                const width = 60 + Math.random() * 60; // 60-120px width
-                const height = 60 + Math.random() * 60; // 60-120px height
+                // Skip if too close to world edges
+                if (blockCenterX < 100 || blockCenterX > this.worldWidth - 100 ||
+                    blockCenterY < 100 || blockCenterY > this.worldHeight - 100) {
+                    continue;
+                }
                 
-                const building = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                building.setAttribute('x', (x - width/2).toString());
-                building.setAttribute('y', (y - height/2).toString());
-                building.setAttribute('width', width.toString());
-                building.setAttribute('height', height.toString());
-                building.setAttribute('fill', '#8f9ca3');
-                building.setAttribute('stroke', '#6d7d8e');
-                building.setAttribute('stroke-width', '2');
-                building.setAttribute('id', `building-${x}-${y}`);
-                this.worldGroup.appendChild(building);
-                this.buildingObjects.push(building);
+                // Create 1-3 buildings per block (random)
+                const numBuildings = Math.random() < 0.7 ? 1 : (Math.random() < 0.5 ? 2 : 3);
+                
+                for (let i = 0; i < numBuildings; i++) {
+                    // Random offset within the block
+                    const offsetX = (Math.random() - 0.5) * 60; // ±30px
+                    const offsetY = (Math.random() - 0.5) * 40; // ±20px
+                    
+                    const buildingX = blockCenterX + offsetX;
+                    const buildingY = blockCenterY + offsetY;
+                    
+                    // Smaller, more realistic building sizes
+                    const width = 30 + Math.random() * 40; // 30-70px width
+                    const height = 30 + Math.random() * 40; // 30-70px height
+                    
+                    // Check if building intersects with roads
+                    if (this.buildingIntersectsRoad(buildingX, buildingY, width, height)) continue;
+                    
+                    const building = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    building.setAttribute('x', (buildingX - width/2).toString());
+                    building.setAttribute('y', (buildingY - height/2).toString());
+                    building.setAttribute('width', width.toString());
+                    building.setAttribute('height', height.toString());
+                    building.setAttribute('fill', '#8f9ca3');
+                    building.setAttribute('stroke', '#6d7d8e');
+                    building.setAttribute('stroke-width', '2');
+                    building.setAttribute('id', `building-${blockX}-${blockY}-${i}`);
+                    this.worldGroup.appendChild(building);
+                    this.buildingObjects.push(building);
+                }
             }
         }
+    }
+
+    buildingIntersectsRoad(centerX, centerY, width, height) {
+        // Calculate building bounds
+        const buildingLeft = centerX - width / 2;
+        const buildingRight = centerX + width / 2;
+        const buildingTop = centerY - height / 2;
+        const buildingBottom = centerY + height / 2;
+        
+        // Check intersection with horizontal roads
+        for (let i = 0; i < 14; i++) {
+            const roadY = 100 + i * 100;
+            const roadTop = roadY - 16; // Road is 32px wide, so 16px on each side
+            const roadBottom = roadY + 16;
+            
+            // Check if building overlaps with this horizontal road
+            if (buildingBottom > roadTop && buildingTop < roadBottom) {
+                return true; // Building intersects with horizontal road
+            }
+        }
+        
+        // Check intersection with vertical roads
+        for (let i = 0; i < 16; i++) {
+            const roadX = 100 + i * 140;
+            const roadLeft = roadX - 16; // Road is 32px wide, so 16px on each side
+            const roadRight = roadX + 16;
+            
+            // Check if building overlaps with this vertical road
+            if (buildingRight > roadLeft && buildingLeft < roadRight) {
+                return true; // Building intersects with vertical road
+            }
+        }
+        
+        return false; // No intersection found
     }
 
     isOnRoad(x, y) {
@@ -430,6 +493,55 @@ class TrafficSimulatorSVG {
             this.createRideRequest();
         });
         
+        document.getElementById('clean-map').addEventListener('click', () => {
+            this.cleanupMap();
+        });
+        
+        // Search input
+        document.getElementById('rides-search').addEventListener('input', (event) => {
+            this.ridesFilter.search = event.target.value.toLowerCase();
+            this.updateRidesTable();
+        });
+        
+        // Checkbox filters
+        document.getElementById('filter-waiting').addEventListener('change', (event) => {
+            this.ridesFilter.status.waiting = event.target.checked;
+            this.updateRidesTable();
+        });
+        
+        document.getElementById('filter-in-progress').addEventListener('change', (event) => {
+            this.ridesFilter.status.inProgress = event.target.checked;
+            this.updateRidesTable();
+        });
+        
+        document.getElementById('filter-completed').addEventListener('change', (event) => {
+            this.ridesFilter.status.completed = event.target.checked;
+            this.updateRidesTable();
+        });
+        
+        // Table header click sorting
+        document.querySelectorAll('.rides-table th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const field = th.getAttribute('data-field');
+                if (this.ridesSort.field === field) {
+                    this.ridesSort.ascending = !this.ridesSort.ascending;
+                } else {
+                    this.ridesSort.field = field;
+                    this.ridesSort.ascending = true;
+                }
+                
+                // Update visual indicators on headers
+                document.querySelectorAll('.rides-table th.sortable').forEach(header => {
+                    header.classList.remove('sort-asc', 'sort-desc');
+                    if (header.getAttribute('data-field') === field) {
+                        header.classList.add(this.ridesSort.ascending ? 'sort-asc' : 'sort-desc');
+                    }
+                });
+                
+                this.updateRidesTable();
+            });
+        });
+        
         // Mini-map click handler
         this.miniMapSVG.addEventListener('click', (event) => {
             const rect = this.miniMapSVG.getBoundingClientRect();
@@ -524,6 +636,39 @@ class TrafficSimulatorSVG {
         this.totalAgents++;
         
         console.log(`🚗 Spawned SVG driver at (${Math.round(x)}, ${Math.round(y)})`);
+        
+        // 🐛 BUG FIX: Check for existing waiting rides when driver is spawned
+        this.assignDriverToWaitingRides(driverData);
+    }
+    
+    // 🐛 BUG FIX: Assign new driver to existing waiting rides
+    assignDriverToWaitingRides(newDriver) {
+        // Find the closest waiting ride
+        let closestRide = null;
+        let closestDistance = Infinity;
+        
+        for (const ride of this.rideRequests) {
+            if (!ride.assignedDriver) {
+                // Calculate distance from driver to pickup location
+                const distance = Math.sqrt(
+                    (newDriver.x - ride.pickupX) ** 2 + 
+                    (newDriver.y - ride.pickupY) ** 2
+                );
+                
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestRide = ride;
+                }
+            }
+        }
+        
+        // Assign the closest waiting ride to this driver
+        if (closestRide) {
+            console.log(`🔧 BUG FIX: Assigning waiting ride #${closestRide.id} to new driver at distance ${Math.round(closestDistance)}`);
+            closestRide.assignedDriver = newDriver;
+            newDriver.status = 'going_to_rider';
+            this.moveDriverToPickup(closestRide);
+        }
     }
 
     createRideRequest() {
@@ -547,12 +692,31 @@ class TrafficSimulatorSVG {
         const pickupX = rider.x;
         const pickupY = rider.y;
         
+        // Validate pickup coordinates
+        if (isNaN(pickupX) || isNaN(pickupY) || pickupX === undefined || pickupY === undefined) {
+            console.error('Invalid rider coordinates:', { x: pickupX, y: pickupY });
+            return;
+        }
+        
         const dropoffX = 200 + Math.random() * (this.worldWidth - 400);
         const dropoffY = 200 + Math.random() * (this.worldHeight - 400);
         
-        // Calculate fare
+        // Validate dropoff coordinates
+        if (isNaN(dropoffX) || isNaN(dropoffY)) {
+            console.error('Invalid dropoff coordinates:', { x: dropoffX, y: dropoffY });
+            return;
+        }
+        
+        // Calculate fare with validation
         const distance = Math.sqrt((dropoffX - pickupX) ** 2 + (dropoffY - pickupY) ** 2);
-        const fare = Math.round(distance * 0.1);
+        
+        // Validate distance calculation
+        if (isNaN(distance) || !isFinite(distance)) {
+            console.error('Invalid distance calculation:', { pickupX, pickupY, dropoffX, dropoffY, distance });
+            return;
+        }
+        
+        const fare = Math.round(distance * 0.1) || 10; // Minimum fare of $10
         
         // Create pickup marker
         const pickupMarker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -662,11 +826,23 @@ class TrafficSimulatorSVG {
     moveDriverToPickup(rideRequest) {
         const driver = rideRequest.assignedDriver;
         
-        const distance = Math.sqrt((driver.x - rideRequest.pickupX) ** 2 + (driver.y - rideRequest.pickupY) ** 2);
-        const duration = (distance / driver.speed) * 1000; // Convert to milliseconds
+        // Calculate road-based path
+        const path = this.calculateRoadPath(driver.x, driver.y, rideRequest.pickupX, rideRequest.pickupY);
         
-        // Animate driver movement
-        this.animateElement(driver.element, rideRequest.pickupX, rideRequest.pickupY, duration, () => {
+        if (path.length === 0) {
+            console.log('❌ No valid path found to pickup location - using direct movement');
+            // Fallback: move directly to pickup location
+            this.moveDriverDirectly(driver, rideRequest.pickupX, rideRequest.pickupY, () => {
+                this.pickupRider(rideRequest);
+            });
+            return;
+        }
+        
+        // Show path on main battlefield
+        this.showPathOnBattlefield(path, '#f1c40f', rideRequest.id); // Yellow path for pickup
+        
+        // Move driver along the path
+        this.moveDriverAlongPath(driver, path, () => {
             this.pickupRider(rideRequest);
         });
     }
@@ -674,6 +850,16 @@ class TrafficSimulatorSVG {
     pickupRider(rideRequest) {
         const driver = rideRequest.assignedDriver;
         const rider = rideRequest.rider;
+        
+        // 🐛 BUG FIX: Update rider position to match driver position
+        rider.x = driver.x;
+        rider.y = driver.y;
+        
+        // Update rider element position
+        if (rider.element) {
+            rider.element.setAttribute('x', (rider.x - 9).toString());
+            rider.element.setAttribute('y', (rider.y - 9).toString());
+        }
         
         // Update statuses
         driver.status = 'on_ride';
@@ -693,16 +879,244 @@ class TrafficSimulatorSVG {
         const driver = rideRequest.assignedDriver;
         const rider = rideRequest.rider;
         
-        const distance = Math.sqrt((driver.x - rideRequest.dropoffX) ** 2 + (driver.y - rideRequest.dropoffY) ** 2);
-        const duration = (distance / driver.speed) * 1000;
+        // Calculate road-based path
+        const path = this.calculateRoadPath(driver.x, driver.y, rideRequest.dropoffX, rideRequest.dropoffY);
         
-        // Animate driver movement
-        this.animateElement(driver.element, rideRequest.dropoffX, rideRequest.dropoffY, duration, () => {
+        if (path.length === 0) {
+            console.log('❌ No valid path found to dropoff location - using direct movement');
+            // Fallback: move directly to dropoff location
+            this.moveDriverDirectly(driver, rideRequest.dropoffX, rideRequest.dropoffY, () => {
+                this.completeRide(rideRequest);
+            });
+            this.moveDriverDirectly(rider, rideRequest.dropoffX, rideRequest.dropoffY, () => {});
+            return;
+        }
+        
+        // Show path on main battlefield
+        this.showPathOnBattlefield(path, '#2ecc71', rideRequest.id); // Green path for dropoff
+        
+        // Move driver along the path
+        this.moveDriverAlongPath(driver, path, () => {
             this.completeRide(rideRequest);
         });
         
-        // Animate rider movement
-        this.animateElement(rider.element, rideRequest.dropoffX, rideRequest.dropoffY, duration);
+        // 🐛 BUG FIX: Move rider with driver during the ride
+        this.moveRiderWithDriver(rider, driver, path);
+    }
+
+    // Road-based pathfinding system
+    calculateRoadPath(startX, startY, endX, endY) {
+        console.log(`🗺️ Calculating path from (${startX}, ${startY}) to (${endX}, ${endY})`);
+        
+        // Convert world coordinates to grid coordinates
+        const startGrid = this.worldToGrid(startX, startY);
+        const endGrid = this.worldToGrid(endX, endY);
+        
+        console.log(`📍 Grid coordinates: start(${startGrid.x}, ${startGrid.y}) to end(${endGrid.x}, ${endGrid.y})`);
+        
+        // Simple A* pathfinding on road grid
+        const path = this.findPathOnGrid(startGrid, endGrid);
+        
+        console.log(`🛣️ Grid path:`, path);
+        
+        // Convert grid path back to world coordinates
+        const worldPath = path.map(gridPos => {
+            const worldPos = this.gridToWorld(gridPos.x, gridPos.y);
+            console.log(`🔄 Grid(${gridPos.x}, ${gridPos.y}) -> World(${worldPos.x}, ${worldPos.y})`);
+            return worldPos;
+        });
+        
+        console.log(`✅ Final world path:`, worldPath);
+        return worldPath;
+    }
+    
+    worldToGrid(x, y) {
+        // Convert world coordinates to road grid coordinates
+        // Vertical roads: x = 100 + i * 140, so i = (x - 100) / 140
+        // Horizontal roads: y = 100 + i * 100, so i = (y - 100) / 100
+        const gridX = Math.round((x - 100) / 140);
+        const gridY = Math.round((y - 100) / 100);
+        
+        // Clamp to valid grid bounds
+        return {
+            x: Math.max(0, Math.min(15, gridX)), // 16 vertical roads (0-15)
+            y: Math.max(0, Math.min(13, gridY))  // 14 horizontal roads (0-13)
+        };
+    }
+    
+    gridToWorld(gridX, gridY) {
+        // Convert grid coordinates to world coordinates (center of road intersection)
+        // Vertical roads: x = 100 + i * 140, center = x + 16 (half road width)
+        // Horizontal roads: y = 100 + i * 100, center = y + 16 (half road width)
+        return {
+            x: 100 + gridX * 140 + 16, // Center of vertical road
+            y: 100 + gridY * 100 + 16  // Center of horizontal road
+        };
+    }
+    
+    findPathOnGrid(start, end) {
+        // Improved pathfinding: move horizontally first, then vertically
+        const path = [];
+        
+        // Add start position
+        path.push({x: start.x, y: start.y});
+        
+        // Move horizontally to target X
+        let currentX = start.x;
+        while (currentX !== end.x) {
+            if (currentX < end.x) {
+                currentX++;
+            } else {
+                currentX--;
+            }
+            path.push({x: currentX, y: start.y});
+        }
+        
+        // Move vertically to target Y
+        let currentY = start.y;
+        while (currentY !== end.y) {
+            if (currentY < end.y) {
+                currentY++;
+            } else {
+                currentY--;
+            }
+            path.push({x: currentX, y: currentY});
+        }
+        
+        console.log(`🛣️ Generated path with ${path.length} waypoints:`, path);
+        return path;
+    }
+    
+    showPathOnBattlefield(path, color, rideId = null) {
+        // Create unique path ID for each ride
+        const pathId = rideId ? `path-${rideId}` : `path-${Date.now()}`;
+        
+        // Remove any existing path for this specific ride
+        this.clearPath(pathId);
+        
+        // Create path visualization
+        const pathGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        pathGroup.setAttribute('id', pathId);
+        pathGroup.setAttribute('stroke', color);
+        pathGroup.setAttribute('stroke-width', '4');
+        pathGroup.setAttribute('fill', 'none');
+        pathGroup.setAttribute('stroke-dasharray', '8,4');
+        pathGroup.setAttribute('opacity', '0.8');
+        
+        // Create path line
+        if (path.length > 1) {
+            const pathLine = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            const points = path.map(point => `${point.x},${point.y}`).join(' ');
+            pathLine.setAttribute('points', points);
+            pathGroup.appendChild(pathLine);
+        }
+        
+        // Add path markers at intersections
+        path.forEach((point, index) => {
+            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            marker.setAttribute('cx', point.x);
+            marker.setAttribute('cy', point.y);
+            marker.setAttribute('r', '3');
+            marker.setAttribute('fill', color);
+            marker.setAttribute('opacity', '0.6');
+            pathGroup.appendChild(marker);
+        });
+        
+        this.gameSVG.appendChild(pathGroup);
+        
+        console.log(`🛣️ Path visualized with ${path.length} waypoints (ID: ${pathId})`);
+        
+        // Auto-remove path after 25 seconds (longer for better visibility)
+        setTimeout(() => {
+            this.clearPath(pathId);
+        }, 25000);
+        
+        return pathId; // Return path ID for potential manual clearing
+    }
+    
+    clearPath(pathId = null) {
+        if (pathId) {
+            // Clear specific path
+            const specificPath = document.getElementById(pathId);
+            if (specificPath) {
+                specificPath.remove();
+                console.log(`🗑️ Cleared path: ${pathId}`);
+            }
+        } else {
+            // Clear all paths (legacy support)
+            const allPaths = document.querySelectorAll('[id^="path-"]');
+            allPaths.forEach(path => {
+                path.remove();
+            });
+            console.log(`🗑️ Cleared ${allPaths.length} paths`);
+        }
+    }
+    
+    moveDriverAlongPath(driver, path, onComplete) {
+        if (path.length === 0) {
+            if (onComplete) onComplete();
+            return;
+        }
+        
+        let currentPathIndex = 0;
+        
+        const moveToNextPoint = () => {
+            if (currentPathIndex >= path.length) {
+                if (onComplete) onComplete();
+                return;
+            }
+            
+            const targetPoint = path[currentPathIndex];
+            const distance = Math.sqrt((driver.x - targetPoint.x) ** 2 + (driver.y - targetPoint.y) ** 2);
+            const duration = (distance / driver.speed) * 1000;
+            
+            // Animate to next point
+            this.animateElement(driver.element, targetPoint.x, targetPoint.y, duration, () => {
+                currentPathIndex++;
+                moveToNextPoint();
+            });
+        };
+        
+        moveToNextPoint();
+    }
+    
+    // 🐛 BUG FIX: Move rider with driver during ride
+    moveRiderWithDriver(rider, driver, path) {
+        if (path.length === 0) return;
+        
+        let currentPathIndex = 0;
+        
+        const moveRiderToNextPoint = () => {
+            if (currentPathIndex >= path.length) {
+                return;
+            }
+            
+            const targetPoint = path[currentPathIndex];
+            const distance = Math.sqrt((rider.x - targetPoint.x) ** 2 + (rider.y - targetPoint.y) ** 2);
+            const duration = (distance / driver.speed) * 1000;
+            
+            // Animate rider to next point
+            this.animateElement(rider.element, targetPoint.x, targetPoint.y, duration, () => {
+                // Update rider coordinates
+                rider.x = targetPoint.x;
+                rider.y = targetPoint.y;
+                
+                currentPathIndex++;
+                moveRiderToNextPoint();
+            });
+        };
+        
+        moveRiderToNextPoint();
+    }
+
+    moveDriverDirectly(driver, targetX, targetY, onComplete) {
+        // Direct movement without pathfinding (fallback)
+        const distance = Math.sqrt((driver.x - targetX) ** 2 + (driver.y - targetY) ** 2);
+        const duration = (distance / driver.speed) * 1000;
+        
+        console.log(`🚗 Direct movement: (${driver.x}, ${driver.y}) -> (${targetX}, ${targetY}), distance: ${Math.round(distance)}, duration: ${Math.round(duration)}ms`);
+        
+        this.animateElement(driver.element, targetX, targetY, duration, onComplete);
     }
 
     completeRide(rideRequest) {
@@ -735,7 +1149,13 @@ class TrafficSimulatorSVG {
         
         this.activeRides--;
         
+        // Clear the path for this completed ride
+        this.clearPath(`path-${rideRequest.id}`);
+        
         console.log(`✅ Completed SVG ride: +$${rideRequest.fare}, rating: ${this.rating.toFixed(1)}`);
+        
+        // 🐛 BUG FIX: Driver should automatically look for new available rides
+        this.assignDriverToWaitingRides(driver);
     }
 
     animateElement(element, targetX, targetY, duration, onComplete = null) {
@@ -789,6 +1209,153 @@ class TrafficSimulatorSVG {
         if (Math.random() < 0.3 && this.riders.length > 0) { // 30% chance
             this.createRideRequest();
         }
+        
+        // Auto-cleanup if too many objects accumulate (increased limits)
+        if (this.rideRequests.length > 50 || this.drivers.length > 30 || this.riders.length > 30) {
+            console.log('🧹 Auto-cleanup triggered - too many objects on map');
+            this.smartCleanupMap();
+        }
+    }
+
+    cleanupMap() {
+        console.log('🧹 Cleaning up map objects...');
+        
+        // Remove all drivers
+        this.drivers.forEach(driver => {
+            if (driver.element && driver.element.parentNode) {
+                driver.element.remove();
+            }
+        });
+        this.drivers = [];
+        
+        // Remove all riders
+        this.riders.forEach(rider => {
+            if (rider.element && rider.element.parentNode) {
+                rider.element.remove();
+            }
+        });
+        this.riders = [];
+        
+        // Remove all ride requests and their markers
+        this.rideRequests.forEach(ride => {
+            if (ride.pickupMarker && ride.pickupMarker.parentNode) {
+                ride.pickupMarker.remove();
+            }
+            if (ride.pickupText && ride.pickupText.parentNode) {
+                ride.pickupText.remove();
+            }
+            if (ride.dropoffMarker && ride.dropoffMarker.parentNode) {
+                ride.dropoffMarker.remove();
+            }
+            if (ride.dropoffText && ride.dropoffText.parentNode) {
+                ride.dropoffText.remove();
+            }
+        });
+        this.rideRequests = [];
+        
+        // Clear any existing paths
+        this.clearPath();
+        
+        // Reset game stats
+        this.earnings = 0;
+        this.rating = 5.0;
+        this.activeRides = 0;
+        this.totalAgents = 0;
+        
+        // Clear rides panel
+        if (this.uiElements && this.uiElements.ridesList) {
+            this.uiElements.ridesList.innerHTML = '<div class="no-rides">No active rides</div>';
+        }
+        
+        console.log('✅ Map cleaned up successfully');
+    }
+    
+    // 🐛 BUG FIX: Smart cleanup that only removes old/completed objects
+    smartCleanupMap() {
+        console.log('🧹 Smart cleanup - removing old objects only...');
+        
+        // Remove old completed ride requests (older than 30 seconds)
+        const now = Date.now();
+        const oldRideRequests = this.rideRequests.filter(ride => {
+            const age = now - ride.startTime;
+            return age > 30000; // 30 seconds old
+        });
+        
+        oldRideRequests.forEach(ride => {
+            if (ride.pickupMarker && ride.pickupMarker.parentNode) {
+                ride.pickupMarker.remove();
+            }
+            if (ride.pickupText && ride.pickupText.parentNode) {
+                ride.pickupText.remove();
+            }
+            if (ride.dropoffMarker && ride.dropoffMarker.parentNode) {
+                ride.dropoffMarker.remove();
+            }
+            if (ride.dropoffText && ride.dropoffText.parentNode) {
+                ride.dropoffText.remove();
+            }
+            
+            // Remove from array
+            const index = this.rideRequests.indexOf(ride);
+            if (index > -1) {
+                this.rideRequests.splice(index, 1);
+            }
+        });
+        
+        // Remove idle riders (keep only active ones)
+        const idleRiders = this.riders.filter(rider => rider.status === 'idle');
+        idleRiders.forEach(rider => {
+            if (rider.element && rider.element.parentNode) {
+                rider.element.remove();
+            }
+            
+            // Remove from array
+            const index = this.riders.indexOf(rider);
+            if (index > -1) {
+                this.riders.splice(index, 1);
+                this.totalAgents--;
+            }
+        });
+        
+        // Remove idle drivers (keep only active ones)
+        const idleDrivers = this.drivers.filter(driver => driver.status === 'idle');
+        idleDrivers.forEach(driver => {
+            if (driver.element && driver.element.parentNode) {
+                driver.element.remove();
+            }
+            
+            // Remove from array
+            const index = this.drivers.indexOf(driver);
+            if (index > -1) {
+                this.drivers.splice(index, 1);
+                this.totalAgents--;
+            }
+        });
+        
+        // Clear old paths (older than 60 seconds)
+        this.clearOldPaths(60000);
+        
+        console.log(`✅ Smart cleanup completed - removed ${oldRideRequests.length} old rides, ${idleRiders.length} idle riders, ${idleDrivers.length} idle drivers`);
+    }
+    
+    // Helper function to clear old paths
+    clearOldPaths(maxAge = 60000) {
+        const now = Date.now();
+        const pathElements = this.gameSvg.querySelectorAll('[id^="path-"]');
+        
+        pathElements.forEach(pathElement => {
+            const pathId = pathElement.id;
+            const rideId = pathId.replace('path-', '');
+            
+            // Find the ride request to check its age
+            const ride = this.rideRequests.find(r => r.id.toString() === rideId);
+            if (ride) {
+                const age = now - ride.startTime;
+                if (age > maxAge) {
+                    pathElement.remove();
+                }
+            }
+        });
     }
 
     centerCameraOn(x, y) {
@@ -946,18 +1513,28 @@ class TrafficSimulatorSVG {
         this.buildingObjects.forEach(building => {
             if (buildingIndex >= this.miniMapElements.buildings.length) return;
             
-            const x = parseFloat(building.getAttribute('x')) / this.worldWidth * 240;
-            const y = parseFloat(building.getAttribute('y')) / this.worldHeight * 160;
-            const width = parseFloat(building.getAttribute('width')) / this.worldWidth * 240;
-            const height = parseFloat(building.getAttribute('height')) / this.worldHeight * 160;
+            const x = parseFloat(building.getAttribute('x'));
+            const y = parseFloat(building.getAttribute('y'));
+            const width = parseFloat(building.getAttribute('width'));
+            const height = parseFloat(building.getAttribute('height'));
+            
+            // Skip if any attribute is NaN or invalid
+            if (isNaN(x) || isNaN(y) || isNaN(width) || isNaN(height)) {
+                return;
+            }
+            
+            const miniX = x / this.worldWidth * 240;
+            const miniY = y / this.worldHeight * 160;
+            const miniWidth = width / this.worldWidth * 240;
+            const miniHeight = height / this.worldHeight * 160;
             
             // Only show buildings that are reasonably sized on mini-map
-            if (width > 1 && height > 1) {
+            if (miniWidth > 1 && miniHeight > 1) {
                 const miniBuilding = this.miniMapElements.buildings[buildingIndex];
-                miniBuilding.setAttribute('x', x.toString());
-                miniBuilding.setAttribute('y', y.toString());
-                miniBuilding.setAttribute('width', width.toString());
-                miniBuilding.setAttribute('height', height.toString());
+                miniBuilding.setAttribute('x', miniX.toString());
+                miniBuilding.setAttribute('y', miniY.toString());
+                miniBuilding.setAttribute('width', miniWidth.toString());
+                miniBuilding.setAttribute('height', miniHeight.toString());
                 miniBuilding.style.display = 'block';
                 buildingIndex++;
             }
@@ -968,8 +1545,20 @@ class TrafficSimulatorSVG {
         this.drivers.forEach((driver, index) => {
             if (index >= this.miniMapElements.drivers.length) return;
             
+            // 🐛 BUG FIX: Validate driver coordinates first
+            if (isNaN(driver.x) || isNaN(driver.y) || !isFinite(driver.x) || !isFinite(driver.y)) {
+                console.warn(`Invalid driver coordinates: x=${driver.x}, y=${driver.y}`);
+                return;
+            }
+            
             const x = driver.x / this.worldWidth * 240;
             const y = driver.y / this.worldHeight * 160;
+            
+            // Validate calculated mini-map coordinates
+            if (isNaN(x) || isNaN(y) || !isFinite(x) || !isFinite(y)) {
+                console.warn(`Invalid mini-map driver coordinates: x=${x}, y=${y}`);
+                return;
+            }
             
             const miniDriver = this.miniMapElements.drivers[index];
             miniDriver.setAttribute('x', (x - 2).toString());
@@ -982,8 +1571,20 @@ class TrafficSimulatorSVG {
         this.riders.forEach((rider, index) => {
             if (index >= this.miniMapElements.riders.length) return;
             
+            // 🐛 BUG FIX: Validate rider coordinates first
+            if (isNaN(rider.x) || isNaN(rider.y) || !isFinite(rider.x) || !isFinite(rider.y)) {
+                console.warn(`Invalid rider coordinates: x=${rider.x}, y=${rider.y}`);
+                return;
+            }
+            
             const x = rider.x / this.worldWidth * 240;
             const y = rider.y / this.worldHeight * 160;
+            
+            // Validate calculated mini-map coordinates
+            if (isNaN(x) || isNaN(y) || !isFinite(x) || !isFinite(y)) {
+                console.warn(`Invalid mini-map rider coordinates: x=${x}, y=${y}`);
+                return;
+            }
             
             const miniRider = this.miniMapElements.riders[index];
             miniRider.setAttribute('x', (x - 1).toString());
@@ -999,6 +1600,11 @@ class TrafficSimulatorSVG {
         
         this.rideRequests.forEach((ride, index) => {
             if (index >= this.miniMapElements.rideRequests.length) return;
+            
+            // Validate ride coordinates
+            if (isNaN(ride.pickupX) || isNaN(ride.pickupY) || isNaN(ride.dropoffX) || isNaN(ride.dropoffY)) {
+                return;
+            }
             
             const pickupX = ride.pickupX / this.worldWidth * 240;
             const pickupY = ride.pickupY / this.worldHeight * 160;
@@ -1043,9 +1649,34 @@ class TrafficSimulatorSVG {
                 mapAgents: document.getElementById('map-agents'),
                 zoomLevel: document.getElementById('zoom-level'),
                 cameraPos: document.getElementById('camera-pos'),
-                mapAvg: document.getElementById('map-avg')
+                mapAvg: document.getElementById('map-avg'),
+                avgDriverDistance: document.getElementById('avg-driver-distance'),
+                ridesTableBody: document.getElementById('rides-table-body')
             };
             this.lastUIValues = {};
+            
+            // Filtering and sorting state
+            this.ridesFilter = {
+                search: '',
+                status: {
+                    waiting: true,
+                    inProgress: true,
+                    completed: true
+                }
+            };
+            this.ridesSort = {
+                field: 'time',
+                ascending: true
+            };
+            
+            // Panel resize state
+            this.panelSizes = {
+                bottomPanelHeight: 140,
+                rightPanelWidth: 300
+            };
+            
+            // Load saved panel sizes from localStorage
+            this.loadPanelSizes();
         }
         
         // Only update if values have changed (performance optimization)
@@ -1104,6 +1735,387 @@ class TrafficSimulatorSVG {
             this.uiElements.mapAvg.textContent = avgDurationText;
             this.lastUIValues.avgDuration = avgDurationText;
         }
+        
+        // Calculate average distance from drivers to pickup locations
+        let avgDriverDistanceText = '0km';
+        if (this.rideRequests.length > 0 && this.drivers.length > 0) {
+            let totalDistance = 0;
+            let validDistances = 0;
+            
+            this.rideRequests.forEach(ride => {
+                if (ride.assignedDriver && ride.assignedDriver.x !== undefined && ride.assignedDriver.y !== undefined) {
+                    const distance = Math.sqrt((ride.assignedDriver.x - ride.pickupX) ** 2 + (ride.assignedDriver.y - ride.pickupY) ** 2);
+                    totalDistance += distance;
+                    validDistances++;
+                }
+            });
+            
+            if (validDistances > 0) {
+                const avgDistance = totalDistance / validDistances;
+                avgDriverDistanceText = `${(avgDistance / 1000).toFixed(1)}km`;
+            }
+        }
+        
+        // Update the UI with average driver distance
+        if (this.lastUIValues.avgDriverDistance !== avgDriverDistanceText) {
+            this.uiElements.avgDriverDistance.textContent = avgDriverDistanceText;
+            this.lastUIValues.avgDriverDistance = avgDriverDistanceText;
+        }
+        
+        // Update rides table
+        this.updateRidesTable();
+    }
+    
+    updateRidesTable() {
+        const tableBody = this.uiElements.ridesTableBody;
+        
+        // Clear existing rows
+        tableBody.innerHTML = '';
+        
+        if (this.rideRequests.length === 0) {
+            tableBody.innerHTML = '<tr class="no-rides-row"><td colspan="10">No active rides</td></tr>';
+            return;
+        }
+        
+        // Process rides with calculated values
+        const processedRides = this.rideRequests.map(ride => {
+            // Determine ride status and styling
+            let status = 'waiting';
+            let statusText = '⏳';
+            let statusClass = 'waiting';
+            
+            if (ride.assignedDriver) {
+                if (ride.assignedDriver.status === 'going_to_rider') {
+                    status = 'in-progress';
+                    statusText = '🚗';
+                    statusClass = 'in-progress';
+                } else if (ride.assignedDriver.status === 'on_ride') {
+                    status = 'in-progress';
+                    statusText = '🚗';
+                    statusClass = 'in-progress';
+                }
+            }
+            
+            // Calculate elapsed time
+            const elapsedTime = Math.floor((Date.now() - ride.startTime) / 1000);
+            const elapsedText = elapsedTime < 60 ? `${elapsedTime}s` : `${Math.floor(elapsedTime / 60)}m ${elapsedTime % 60}s`;
+            
+            // Calculate ride distance (pickup to dropoff) with validation
+            let rideDistance = 0;
+            let rideDistanceKm = '0.0';
+            let pricePerKm = '0.00';
+            
+            // Validate coordinates before calculation
+            if (ride.pickupX !== undefined && ride.pickupY !== undefined && 
+                ride.dropoffX !== undefined && ride.dropoffY !== undefined &&
+                !isNaN(ride.pickupX) && !isNaN(ride.pickupY) && 
+                !isNaN(ride.dropoffX) && !isNaN(ride.dropoffY)) {
+                
+                rideDistance = Math.sqrt((ride.dropoffX - ride.pickupX) ** 2 + (ride.dropoffY - ride.pickupY) ** 2);
+                
+                // Validate distance calculation
+                if (!isNaN(rideDistance) && isFinite(rideDistance)) {
+                    rideDistanceKm = (rideDistance / 1000).toFixed(1); // Convert pixels to "km" (scaled)
+                    pricePerKm = rideDistance > 0 ? (ride.fare / (rideDistance / 1000)).toFixed(2) : '0.00';
+                } else {
+                    console.warn('Invalid ride distance calculation for ride', ride.id);
+                    rideDistanceKm = 'N/A';
+                    pricePerKm = 'N/A';
+                }
+            } else {
+                console.warn('Invalid coordinates for ride', ride.id, { pickupX: ride.pickupX, pickupY: ride.pickupY, dropoffX: ride.dropoffX, dropoffY: ride.dropoffY });
+                rideDistanceKm = 'N/A';
+                pricePerKm = 'N/A';
+            }
+            
+            // Calculate driver distance to pickup (if driver is assigned)
+            let driverDistance = 0;
+            let driverDistanceText = 'N/A';
+            if (ride.assignedDriver && ride.assignedDriver.x !== undefined && ride.assignedDriver.y !== undefined) {
+                driverDistance = Math.sqrt((ride.assignedDriver.x - ride.pickupX) ** 2 + (ride.assignedDriver.y - ride.pickupY) ** 2);
+                const driverDistanceKm = (driverDistance / 1000).toFixed(1);
+                driverDistanceText = `${driverDistanceKm}km`;
+            } else if (ride.assignedDriver) {
+                driverDistanceText = 'Invalid coords';
+            }
+            
+            return {
+                ...ride,
+                status,
+                statusText,
+                statusClass,
+                elapsedTime,
+                elapsedText,
+                rideDistance,
+                rideDistanceKm,
+                pricePerKm,
+                driverDistance,
+                driverDistanceText
+            };
+        });
+        
+        // Apply search filter
+        let filteredRides = processedRides;
+        if (this.ridesFilter.search) {
+            filteredRides = processedRides.filter(ride => {
+                const searchText = this.ridesFilter.search;
+                return ride.id.toString().includes(searchText) ||
+                       ride.fare.toString().includes(searchText) ||
+                       ride.statusText.toLowerCase().includes(searchText) ||
+                       ride.status.toLowerCase().includes(searchText);
+            });
+        }
+        
+        // Apply status filter
+        filteredRides = filteredRides.filter(ride => {
+            switch (ride.status) {
+                case 'waiting':
+                    return this.ridesFilter.status.waiting;
+                case 'in-progress':
+                    return this.ridesFilter.status.inProgress;
+                case 'completed':
+                    return this.ridesFilter.status.completed;
+                default:
+                    return true;
+            }
+        });
+        
+        // Apply sorting
+        filteredRides.sort((a, b) => {
+            let aValue, bValue;
+            
+            switch (this.ridesSort.field) {
+                case 'id':
+                    aValue = a.id;
+                    bValue = b.id;
+                    break;
+                case 'time':
+                    aValue = a.elapsedTime;
+                    bValue = b.elapsedTime;
+                    break;
+                case 'fare':
+                    aValue = a.fare;
+                    bValue = b.fare;
+                    break;
+                case 'distance':
+                    aValue = a.rideDistance;
+                    bValue = b.rideDistance;
+                    break;
+                case 'driver-distance':
+                    aValue = a.driverDistance;
+                    bValue = b.driverDistance;
+                    break;
+                case 'status':
+                    aValue = a.status;
+                    bValue = b.status;
+                    break;
+                case 'price-per-km':
+                    aValue = parseFloat(a.pricePerKm) || 0;
+                    bValue = parseFloat(b.pricePerKm) || 0;
+                    break;
+                case 'driver-status':
+                    aValue = a.assignedDriver ? a.assignedDriver.status : 'No driver';
+                    bValue = b.assignedDriver ? b.assignedDriver.status : 'No driver';
+                    break;
+                case 'pickup-location':
+                    aValue = `${Math.round(a.pickupX)},${Math.round(a.pickupY)}`;
+                    bValue = `${Math.round(b.pickupX)},${Math.round(b.pickupY)}`;
+                    break;
+                case 'dropoff-location':
+                    aValue = `${Math.round(a.dropoffX)},${Math.round(a.dropoffY)}`;
+                    bValue = `${Math.round(b.dropoffX)},${Math.round(b.dropoffY)}`;
+                    break;
+                default:
+                    aValue = a.elapsedTime;
+                    bValue = b.elapsedTime;
+            }
+            
+            // Handle string comparison for status
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                return this.ridesSort.ascending ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+            }
+            
+            // Handle numeric comparison
+            if (this.ridesSort.ascending) {
+                return aValue - bValue;
+            } else {
+                return bValue - aValue;
+            }
+        });
+        
+        // Display filtered and sorted rides
+        if (filteredRides.length === 0) {
+            tableBody.innerHTML = '<tr class="no-rides-row"><td colspan="10">No rides match the current filter</td></tr>';
+            return;
+        }
+        
+        filteredRides.forEach(ride => {
+            const row = document.createElement('tr');
+            row.className = ride.status;
+            
+            // Create table row content
+            row.innerHTML = `
+                <td>#${ride.id}</td>
+                <td><span class="status-badge ${ride.statusClass}">${ride.statusText}</span></td>
+                <td>$${ride.fare}</td>
+                <td>${ride.elapsedText}</td>
+                <td>${ride.rideDistanceKm}km</td>
+                <td>$${ride.pricePerKm}/km</td>
+                <td>${ride.driverDistanceText}</td>
+                <td><span class="driver-status-badge ${ride.assignedDriver ? ride.assignedDriver.status : 'no-driver'}">${ride.assignedDriver ? this.getDriverStatusEmoji(ride.assignedDriver.status) : '❌'}</span></td>
+                <td>${Math.round(ride.pickupX)},${Math.round(ride.pickupY)}</td>
+                <td>${Math.round(ride.dropoffX)},${Math.round(ride.dropoffY)}</td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+        
+        // Update quick stats
+        this.updateQuickStats(processedRides, filteredRides);
+    }
+    
+    updateQuickStats(allRides, filteredRides) {
+        const totalRides = allRides.length;
+        const waitingCount = allRides.filter(ride => ride.status === 'waiting').length;
+        const activeCount = allRides.filter(ride => ride.status === 'in-progress').length;
+        
+        // Update the quick stats display
+        const totalElement = document.getElementById('total-rides');
+        const waitingElement = document.getElementById('waiting-count');
+        const activeElement = document.getElementById('active-count');
+        
+        if (totalElement) totalElement.textContent = totalRides;
+        if (waitingElement) waitingElement.textContent = waitingCount;
+        if (activeElement) activeElement.textContent = activeCount;
+    }
+    
+    getDriverStatusEmoji(status) {
+        switch (status) {
+            case 'idle':
+                return '😴';
+            case 'going_to_rider':
+                return '🚗';
+            case 'on_ride':
+                return '🚗';
+            case 'waiting':
+                return '⏳';
+            case 'in_ride':
+                return '🚗';
+            default:
+                return '❓';
+        }
+    }
+    
+    // Panel resize functionality
+    loadPanelSizes() {
+        const saved = localStorage.getItem('trafficSimulator_panelSizes');
+        if (saved) {
+            try {
+                const sizes = JSON.parse(saved);
+                this.panelSizes.bottomPanelHeight = sizes.bottomPanelHeight || 140;
+                this.panelSizes.rightPanelWidth = sizes.rightPanelWidth || 300;
+                this.applyPanelSizes();
+            } catch (e) {
+                console.warn('Failed to load panel sizes:', e);
+            }
+        }
+    }
+    
+    savePanelSizes() {
+        localStorage.setItem('trafficSimulator_panelSizes', JSON.stringify(this.panelSizes));
+    }
+    
+    applyPanelSizes() {
+        // Apply bottom panel height
+        const uiPanel = document.getElementById('ui-panel');
+        const gameSvg = document.getElementById('game-svg');
+        const ridesPanel = document.getElementById('rides-panel');
+        const bottomResizeHandle = document.getElementById('bottom-resize-handle');
+        const rightResizeHandle = document.getElementById('right-resize-handle');
+        
+        if (uiPanel && gameSvg) {
+            uiPanel.style.height = this.panelSizes.bottomPanelHeight + 'px';
+            gameSvg.style.bottom = this.panelSizes.bottomPanelHeight + 'px';
+            bottomResizeHandle.style.bottom = this.panelSizes.bottomPanelHeight + 'px';
+        }
+        
+        // Apply right panel width
+        if (ridesPanel && gameSvg) {
+            ridesPanel.style.width = this.panelSizes.rightPanelWidth + 'px';
+            gameSvg.style.right = this.panelSizes.rightPanelWidth + 'px';
+            rightResizeHandle.style.right = this.panelSizes.rightPanelWidth + 'px';
+        }
+    }
+    
+    setupResizeHandles() {
+        const bottomResizeHandle = document.getElementById('bottom-resize-handle');
+        const rightResizeHandle = document.getElementById('right-resize-handle');
+        
+        // Bottom panel resize (horizontal)
+        if (bottomResizeHandle) {
+            let isResizing = false;
+            let startY = 0;
+            let startHeight = 0;
+            
+            bottomResizeHandle.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                startY = e.clientY;
+                startHeight = this.panelSizes.bottomPanelHeight;
+                document.body.classList.add('resizing-horizontal');
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+                
+                const deltaY = startY - e.clientY; // Inverted because we're resizing from bottom
+                const newHeight = Math.max(100, Math.min(300, startHeight + deltaY));
+                
+                this.panelSizes.bottomPanelHeight = newHeight;
+                this.applyPanelSizes();
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.classList.remove('resizing-horizontal');
+                    this.savePanelSizes();
+                }
+            });
+        }
+        
+        // Right panel resize (vertical)
+        if (rightResizeHandle) {
+            let isResizing = false;
+            let startX = 0;
+            let startWidth = 0;
+            
+            rightResizeHandle.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = this.panelSizes.rightPanelWidth;
+                document.body.classList.add('resizing-vertical');
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+                
+                const deltaX = e.clientX - startX;
+                const newWidth = Math.max(200, Math.min(600, startWidth + deltaX));
+                
+                this.panelSizes.rightPanelWidth = newWidth;
+                this.applyPanelSizes();
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.classList.remove('resizing-vertical');
+                    this.savePanelSizes();
+                }
+            });
+        }
     }
 }
 
@@ -1113,6 +2125,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const game = new TrafficSimulatorSVG();
     game.init();
+    
+    // Setup resize handles
+    game.setupResizeHandles();
     
     // Make game globally accessible
     window.game = game;

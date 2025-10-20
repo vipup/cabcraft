@@ -28,12 +28,465 @@
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 140px;
+            right: 300px; /* Dynamic width based on rides panel */
+            bottom: 140px; /* Dynamic height based on UI panel */
             background: #2c3e50;
             cursor: grab;
-            width: 100%;
+            transition: right 0.1s ease, bottom 0.1s ease;
+        }
+        
+        #rides-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 300px;
+            min-width: 200px;
+            max-width: 600px;
             height: calc(100vh - 140px);
+            background: #34495e;
+            border-left: 2px solid #2c3e50;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            transition: width 0.1s ease;
+        }
+        
+        #rides-panel h3 {
+            margin: 0 0 10px 0;
+            color: #ecf0f1;
+            font-size: 16px;
+            text-align: center;
+            border-bottom: 1px solid #2c3e50;
+            padding-bottom: 8px;
+        }
+        
+        #rides-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .ride-item {
+            background: #2c3e50;
+            border: 1px solid #34495e;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 11px;
+            color: #ecf0f1;
+            position: relative;
+        }
+        
+        .ride-item.completed {
+            border-left: 4px solid #27ae60;
+        }
+        
+        .ride-item.in-progress {
+            border-left: 4px solid #f39c12;
+        }
+        
+        .ride-item.waiting {
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .ride-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        
+        .ride-id {
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .ride-status {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        .ride-status.waiting {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .ride-status.in-progress {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .ride-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            font-size: 10px;
+        }
+        
+        .ride-details:last-child {
+            margin-bottom: 0;
+        }
+        
+        .fare {
+            color: #f1c40f;
+            font-weight: bold;
+        }
+        
+        .time {
+            color: #95a5a6;
+        }
+        
+        .distance {
+            color: #2ecc71;
+        }
+        
+        .price-per-km {
+            color: #e67e22;
+        }
+        
+        .driver-distance {
+            color: #3498db;
+        }
+        
+        .driver-status {
+            color: #95a5a6;
+            font-style: italic;
+        }
+        
+        /* Rides Controls Styling */
+        .rides-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #34495e;
+            border-radius: 4px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        /* Responsive design for smaller panels */
+        @media (max-width: 400px) {
+            .rides-controls {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            
+            .quick-stats {
+                margin-left: 0;
+                justify-content: center;
+            }
+            
+            .search-controls input {
+                min-width: 120px;
+                max-width: 100%;
+            }
+        }
+        
+        .search-controls, .filter-controls, .quick-stats {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .search-controls label, .filter-controls label {
+            color: #ecf0f1;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        
+        .search-controls input {
+            background: #2c3e50;
+            color: #ecf0f1;
+            border: 1px solid #34495e;
+            border-radius: 3px;
+            padding: 4px 8px;
+            font-size: 11px;
+            min-width: 150px;
+            max-width: 200px;
+        }
+        
+        .search-controls input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .quick-stats {
+            margin-left: auto;
+            gap: 15px;
+        }
+        
+        .stat-item {
+            color: #ecf0f1;
+            font-size: 11px;
+            font-weight: bold;
+            background: rgba(52, 73, 94, 0.6);
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #34495e;
+        }
+        
+        .stat-item span {
+            color: #3498db;
+        }
+        
+        .status-bullets {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .status-bullet-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            color: #ecf0f1;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(52, 73, 94, 0.3);
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .status-bullet-label:hover {
+            background: rgba(52, 73, 94, 0.6);
+            border-color: #34495e;
+        }
+        
+        .status-bullet-label input[type="checkbox"] {
+            display: none;
+        }
+        
+        .status-bullet {
+            font-size: 14px;
+            user-select: none;
+            transition: opacity 0.2s ease;
+        }
+        
+        .status-bullet-label input[type="checkbox"]:not(:checked) + .status-bullet {
+            opacity: 0.3;
+        }
+        
+        .status-bullet.waiting {
+            color: #f39c12;
+        }
+        
+        .status-bullet.in-progress {
+            color: #3498db;
+        }
+        
+        .status-bullet.completed {
+            color: #27ae60;
+        }
+        
+        
+        /* Table Styling */
+        .table-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #34495e;
+            border-radius: 4px;
+            background: #2c3e50;
+        }
+        
+        .rides-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        
+        .rides-table th {
+            background: #34495e;
+            color: #ecf0f1;
+            padding: 8px 6px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 1px solid #34495e;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .rides-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .rides-table th.sortable:hover {
+            background: #3d566e;
+        }
+        
+        .rides-table th.sortable.sort-asc::after {
+            content: ' ↑';
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        .rides-table th.sortable.sort-desc::after {
+            content: ' ↓';
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .rides-table td {
+            padding: 6px;
+            border-bottom: 1px solid #34495e;
+            color: #ecf0f1;
+        }
+        
+        .rides-table tbody tr:hover {
+            background: #3d566e;
+        }
+        
+        .rides-table tbody tr.waiting {
+            border-left: 3px solid #e74c3c;
+        }
+        
+        .rides-table tbody tr.in-progress {
+            border-left: 3px solid #f39c12;
+        }
+        
+        .rides-table tbody tr.completed {
+            border-left: 3px solid #27ae60;
+        }
+        
+        .no-rides-row {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        .status-badge {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-badge.waiting {
+            color: #f39c12;
+            background: rgba(243, 156, 18, 0.2);
+        }
+        
+        .status-badge.in-progress {
+            color: #3498db;
+            background: rgba(52, 152, 219, 0.2);
+        }
+        
+        .status-badge.completed {
+            color: #27ae60;
+            background: rgba(39, 174, 96, 0.2);
+        }
+        
+        /* Driver Status Badge Styling */
+        .driver-status-badge {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        .driver-status-badge.idle {
+            color: #95a5a6;
+            background: rgba(149, 165, 166, 0.2);
+        }
+        
+        .driver-status-badge.going_to_rider {
+            color: #e67e22;
+            background: rgba(230, 126, 34, 0.2);
+        }
+        
+        .driver-status-badge.on_ride {
+            color: #3498db;
+            background: rgba(52, 152, 219, 0.2);
+        }
+        
+        .driver-status-badge.waiting {
+            color: #f39c12;
+            background: rgba(243, 156, 18, 0.2);
+        }
+        
+        .driver-status-badge.in_ride {
+            color: #3498db;
+            background: rgba(52, 152, 219, 0.2);
+        }
+        
+        .driver-status-badge.no-driver {
+            color: #e74c3c;
+            background: rgba(231, 76, 60, 0.2);
+        }
+        
+        /* Resize Handles */
+        .resize-handle {
+            position: absolute;
+            background: #3498db;
+            z-index: 1000;
+            transition: background-color 0.2s ease;
+        }
+        
+        .resize-handle:hover {
+            background: #2980b9;
+        }
+        
+        .resize-handle:active {
+            background: #1f618d;
+        }
+        
+        .resize-handle.horizontal {
+            bottom: 140px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            cursor: ns-resize;
+        }
+        
+        .resize-handle.vertical {
+            top: 0;
+            right: 300px;
+            bottom: 0;
+            width: 4px;
+            cursor: ew-resize;
+        }
+        
+        /* Resizable panels */
+        #ui-panel {
+            resize: none; /* Disable default resize */
+        }
+        
+        #rides-panel {
+            resize: none; /* Disable default resize */
+        }
+        
+        /* Resize cursor states */
+        .resizing-horizontal {
+            cursor: ns-resize !important;
+        }
+        
+        .resizing-vertical {
+            cursor: ew-resize !important;
+        }
+        
+        .no-rides {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+            padding: 20px;
         }
 
         #game-svg:active {
@@ -46,6 +499,8 @@
             left: 0;
             right: 0;
             height: 140px;
+            min-height: 100px;
+            max-height: 300px;
             background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
             border-top: 3px solid #3498db;
             display: flex;
@@ -53,6 +508,7 @@
             padding: 10px;
             gap: 15px;
             box-shadow: 0 -5px 15px rgba(0,0,0,0.3);
+            transition: height 0.1s ease;
         }
 
         #mapview {
@@ -162,6 +618,9 @@
                     <span>Avg Ride: <span id="map-avg">0s</span></span>
                 </div>
                 <div class="resource-display">
+                    <span>Avg Driver Dist: <span id="avg-driver-distance">0km</span></span>
+                </div>
+                <div class="resource-display">
                     <span>Zoom: <span id="zoom-level">1.0x</span></span>
                 </div>
                 <div class="resource-display">
@@ -188,10 +647,79 @@
                 <button class="unit-button" id="spawn-rider">🏍️ Spawn Rider</button>
                 <button class="unit-button" id="spawn-driver">🚗 Spawn Driver</button>
                 <button class="unit-button" id="request-ride">📱 Request Ride</button>
+                <button class="unit-button" id="clean-map" style="background-color: #e74c3c; color: white;">🧹 Clean Map</button>
                 <div class="selected-info" id="selected-info">No units selected</div>
             </div>
         </div>
+        
+        <!-- Resize handle for bottom panel -->
+        <div id="bottom-resize-handle" class="resize-handle horizontal"></div>
+        
         <svg id="game-svg" viewBox="0 0 2400 1600"></svg>
+        
+        <!-- Resize handle for right panel -->
+        <div id="right-resize-handle" class="resize-handle vertical"></div>
+        
+        <div id="rides-panel">
+            <h3>Active Rides</h3>
+            
+            <!-- Responsive Controls -->
+            <div class="rides-controls">
+                <div class="search-controls">
+                    <label for="rides-search">Search:</label>
+                    <input type="text" id="rides-search" placeholder="ID, fare, status...">
+                </div>
+                
+                <div class="filter-controls">
+                    <label>Status:</label>
+                    <div class="status-bullets">
+                        <label class="status-bullet-label" data-status="waiting">
+                            <input type="checkbox" id="filter-waiting" checked>
+                            <span class="status-bullet waiting">⏳</span>
+                        </label>
+                        <label class="status-bullet-label" data-status="in-progress">
+                            <input type="checkbox" id="filter-in-progress" checked>
+                            <span class="status-bullet in-progress">🚗</span>
+                        </label>
+                        <label class="status-bullet-label" data-status="completed">
+                            <input type="checkbox" id="filter-completed" checked>
+                            <span class="status-bullet completed">✅</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="quick-stats">
+                    <span class="stat-item">Total: <span id="total-rides">0</span></span>
+                    <span class="stat-item">Waiting: <span id="waiting-count">0</span></span>
+                    <span class="stat-item">Active: <span id="active-count">0</span></span>
+                </div>
+            </div>
+            
+            <!-- Rides Table -->
+            <div class="table-container">
+                <table id="rides-table" class="rides-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-field="id">ID</th>
+                            <th class="sortable" data-field="status">Status</th>
+                            <th class="sortable" data-field="fare">Fare</th>
+                            <th class="sortable" data-field="time">Time</th>
+                            <th class="sortable" data-field="distance">Distance</th>
+                            <th class="sortable" data-field="price-per-km">Price/km</th>
+                            <th class="sortable" data-field="driver-distance">Driver Dist</th>
+                            <th class="sortable" data-field="driver-status">Driver Status</th>
+                            <th class="sortable" data-field="pickup-location">Pickup</th>
+                            <th class="sortable" data-field="dropoff-location">Dropoff</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rides-table-body">
+                        <tr class="no-rides-row">
+                            <td colspan="10">No active rides</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script src="game.js"></script>
