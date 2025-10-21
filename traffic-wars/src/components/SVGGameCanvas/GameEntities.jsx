@@ -1,21 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { useGame } from '../../context/GameContext'
 
 const GameEntities = () => {
   const { drivers, riders, rideRequests } = useGame()
-  
-  // Force re-render every frame using requestAnimationFrame
-  const [, forceUpdate] = useState(0)
-  
-  useEffect(() => {
-    let frameId
-    const animate = () => {
-      forceUpdate(n => n + 1)
-      frameId = requestAnimationFrame(animate)
-    }
-    frameId = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(frameId)
-  }, [])
   
   return (
     <g className="game-entities">
