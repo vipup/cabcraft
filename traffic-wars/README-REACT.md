@@ -1,7 +1,7 @@
 # 🚗 Traffic Simulator - React Edition
 
 ## Overview
-A modular, component-based ride-sharing traffic simulator built with React and SVG rendering. This is a complete refactoring of the original single-file application into a professional, maintainable React architecture.
+A modular, component-based ride-sharing traffic simulator built with React and SVG rendering. This is a complete refactoring of the original Phaser.js application into a professional, maintainable React architecture.
 
 ## Architecture
 

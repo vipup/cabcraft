@@ -1,7 +1,7 @@
 {
   "name": "traffic-wars",
   "version": "2.0.0",
-  "description": "A modular ride-sharing traffic simulator built with React-style components",
+  "description": "A modular ride-sharing traffic simulator built with React and SVG rendering",
   "type": "module",
   "main": "src/main.js",
   "scripts": {
