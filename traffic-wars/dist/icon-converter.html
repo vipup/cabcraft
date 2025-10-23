@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Converter</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .icon { margin: 10px; display: inline-block; }
+        canvas { border: 1px solid #ccc; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Traffic Simulator Icon Converter</h1>
+    <p>Right-click on each icon and "Save image as..." to create PNG files:</p>
+    
+    
+        <div class="icon">
+            <h3>16x16</h3>
+            <canvas id="canvas-16" width="16" height="16"></canvas>
+        </div>
+    
+        <div class="icon">
+            <h3>32x32</h3>
+            <canvas id="canvas-32" width="32" height="32"></canvas>
+        </div>
+    
+        <div class="icon">
+            <h3>72x72</h3>
+            <canvas id="canvas-72" width="72" height="72"></canvas>
+        </div>
+    
+        <div class="icon">
+            <h3>96x96</h3>
+            <canvas id="canvas-96" width="96" height="96"></canvas>
+        </div>
+    
+        <div class="icon">
+            <h3>128x128</h3>
+            <canvas id="canvas-128" width="128" height="128"></canvas>
+        </div>
+    
+        <div class="icon">
+            <h3>144x144</h3>
+            <canvas id="canvas-144" width="144" height="144"></canvas>
+        </div>
+    
+        <div class="icon">
+            <h3>152x152</h3>
+            <canvas id="canvas-152" width="152" height="152"></canvas>
+        </div>
+    
+        <div class="icon">
+            <h3>192x192</h3>
+            <canvas id="canvas-192" width="192" height="192"></canvas>
+        </div>
+    
+        <div class="icon">
+            <h3>384x384</h3>
+            <canvas id="canvas-384" width="384" height="384"></canvas>
+        </div>
+    
+        <div class="icon">
+            <h3>512x512</h3>
+            <canvas id="canvas-512" width="512" height="512"></canvas>
+        </div>
+    
+    
+    <script>
+        
+            const canvas16 = document.getElementById('canvas-16');
+            const ctx16 = canvas16.getContext('2d');
+            
+            // Create gradient background
+            const gradient16 = ctx16.createLinearGradient(0, 0, 16, 16);
+            gradient16.addColorStop(0, '#4a90e2');
+            gradient16.addColorStop(1, '#357abd');
+            
+            ctx16.fillStyle = gradient16;
+            ctx16.fillRect(0, 0, 16, 16);
+            
+            // Add rounded corners
+            ctx16.globalCompositeOperation = 'destination-in';
+            ctx16.beginPath();
+            ctx16.roundRect(0, 0, 16, 16, 1.6);
+            ctx16.fill();
+            
+            // Reset composite operation
+            ctx16.globalCompositeOperation = 'source-over';
+            
+            // Add car emoji
+            ctx16.font = '6.4px Arial';
+            ctx16.textAlign = 'center';
+            ctx16.textBaseline = 'middle';
+            ctx16.fillStyle = 'white';
+            ctx16.fillText('🚗', 8, 8);
+        
+            const canvas32 = document.getElementById('canvas-32');
+            const ctx32 = canvas32.getContext('2d');
+            
+            // Create gradient background
+            const gradient32 = ctx32.createLinearGradient(0, 0, 32, 32);
+            gradient32.addColorStop(0, '#4a90e2');
+            gradient32.addColorStop(1, '#357abd');
+            
+            ctx32.fillStyle = gradient32;
+            ctx32.fillRect(0, 0, 32, 32);
+            
+            // Add rounded corners
+            ctx32.globalCompositeOperation = 'destination-in';
+            ctx32.beginPath();
+            ctx32.roundRect(0, 0, 32, 32, 3.2);
+            ctx32.fill();
+            
+            // Reset composite operation
+            ctx32.globalCompositeOperation = 'source-over';
+            
+            // Add car emoji
+            ctx32.font = '12.8px Arial';
+            ctx32.textAlign = 'center';
+            ctx32.textBaseline = 'middle';
+            ctx32.fillStyle = 'white';
+            ctx32.fillText('🚗', 16, 16);
+        
+            const canvas72 = document.getElementById('canvas-72');
+            const ctx72 = canvas72.getContext('2d');
+            
+            // Create gradient background
+            const gradient72 = ctx72.createLinearGradient(0, 0, 72, 72);
+            gradient72.addColorStop(0, '#4a90e2');
+            gradient72.addColorStop(1, '#357abd');
+            
+            ctx72.fillStyle = gradient72;
+            ctx72.fillRect(0, 0, 72, 72);
+            
+            // Add rounded corners
+            ctx72.globalCompositeOperation = 'destination-in';
+            ctx72.beginPath();
+            ctx72.roundRect(0, 0, 72, 72, 7.2);
+            ctx72.fill();
+            
+            // Reset composite operation
+            ctx72.globalCompositeOperation = 'source-over';
+            
+            // Add car emoji
+            ctx72.font = '28.8px Arial';
+            ctx72.textAlign = 'center';
+            ctx72.textBaseline = 'middle';
+            ctx72.fillStyle = 'white';
+            ctx72.fillText('🚗', 36, 36);
+        
+            const canvas96 = document.getElementById('canvas-96');
+            const ctx96 = canvas96.getContext('2d');
+            
+            // Create gradient background
+            const gradient96 = ctx96.createLinearGradient(0, 0, 96, 96);
+            gradient96.addColorStop(0, '#4a90e2');
+            gradient96.addColorStop(1, '#357abd');
+            
+            ctx96.fillStyle = gradient96;
+            ctx96.fillRect(0, 0, 96, 96);
+            
+            // Add rounded corners
+            ctx96.globalCompositeOperation = 'destination-in';
+            ctx96.beginPath();
+            ctx96.roundRect(0, 0, 96, 96, 9.600000000000001);
+            ctx96.fill();
+            
+            // Reset composite operation
+            ctx96.globalCompositeOperation = 'source-over';
+            
+            // Add car emoji
+            ctx96.font = '38.400000000000006px Arial';
+            ctx96.textAlign = 'center';
+            ctx96.textBaseline = 'middle';
+            ctx96.fillStyle = 'white';
+            ctx96.fillText('🚗', 48, 48);
+        
+            const canvas128 = document.getElementById('canvas-128');
+            const ctx128 = canvas128.getContext('2d');
+            
+            // Create gradient background
+            const gradient128 = ctx128.createLinearGradient(0, 0, 128, 128);
+            gradient128.addColorStop(0, '#4a90e2');
+            gradient128.addColorStop(1, '#357abd');
+            
+            ctx128.fillStyle = gradient128;
+            ctx128.fillRect(0, 0, 128, 128);
+            
+            // Add rounded corners
+            ctx128.globalCompositeOperation = 'destination-in';
+            ctx128.beginPath();
+            ctx128.roundRect(0, 0, 128, 128, 12.8);
+            ctx128.fill();
+            
+            // Reset composite operation
+            ctx128.globalCompositeOperation = 'source-over';
+            
+            // Add car emoji
+            ctx128.font = '51.2px Arial';
+            ctx128.textAlign = 'center';
+            ctx128.textBaseline = 'middle';
+            ctx128.fillStyle = 'white';
+            ctx128.fillText('🚗', 64, 64);
+        
+            const canvas144 = document.getElementById('canvas-144');
+            const ctx144 = canvas144.getContext('2d');
+            
+            // Create gradient background
+            const gradient144 = ctx144.createLinearGradient(0, 0, 144, 144);
+            gradient144.addColorStop(0, '#4a90e2');
+            gradient144.addColorStop(1, '#357abd');
+            
+            ctx144.fillStyle = gradient144;
+            ctx144.fillRect(0, 0, 144, 144);
+            
+            // Add rounded corners
+            ctx144.globalCompositeOperation = 'destination-in';
+            ctx144.beginPath();
+            ctx144.roundRect(0, 0, 144, 144, 14.4);
+            ctx144.fill();
+            
+            // Reset composite operation
+            ctx144.globalCompositeOperation = 'source-over';
+            
+            // Add car emoji
+            ctx144.font = '57.6px Arial';
+            ctx144.textAlign = 'center';
+            ctx144.textBaseline = 'middle';
+            ctx144.fillStyle = 'white';
+            ctx144.fillText('🚗', 72, 72);
+        
+            const canvas152 = document.getElementById('canvas-152');
+            const ctx152 = canvas152.getContext('2d');
+            
+            // Create gradient background
+            const gradient152 = ctx152.createLinearGradient(0, 0, 152, 152);
+            gradient152.addColorStop(0, '#4a90e2');
+            gradient152.addColorStop(1, '#357abd');
+            
+            ctx152.fillStyle = gradient152;
+            ctx152.fillRect(0, 0, 152, 152);
+            
+            // Add rounded corners
+            ctx152.globalCompositeOperation = 'destination-in';
+            ctx152.beginPath();
+            ctx152.roundRect(0, 0, 152, 152, 15.200000000000001);
+            ctx152.fill();
+            
+            // Reset composite operation
+            ctx152.globalCompositeOperation = 'source-over';
+            
+            // Add car emoji
+            ctx152.font = '60.800000000000004px Arial';
+            ctx152.textAlign = 'center';
+            ctx152.textBaseline = 'middle';
+            ctx152.fillStyle = 'white';
+            ctx152.fillText('🚗', 76, 76);
+        
+            const canvas192 = document.getElementById('canvas-192');
+            const ctx192 = canvas192.getContext('2d');
+            
+            // Create gradient background
+            const gradient192 = ctx192.createLinearGradient(0, 0, 192, 192);
+            gradient192.addColorStop(0, '#4a90e2');
+            gradient192.addColorStop(1, '#357abd');
+            
+            ctx192.fillStyle = gradient192;
+            ctx192.fillRect(0, 0, 192, 192);
+            
+            // Add rounded corners
+            ctx192.globalCompositeOperation = 'destination-in';
+            ctx192.beginPath();
+            ctx192.roundRect(0, 0, 192, 192, 19.200000000000003);
+            ctx192.fill();
+            
+            // Reset composite operation
+            ctx192.globalCompositeOperation = 'source-over';
+            
+            // Add car emoji
+            ctx192.font = '76.80000000000001px Arial';
+            ctx192.textAlign = 'center';
+            ctx192.textBaseline = 'middle';
+            ctx192.fillStyle = 'white';
+            ctx192.fillText('🚗', 96, 96);
+        
+            const canvas384 = document.getElementById('canvas-384');
+            const ctx384 = canvas384.getContext('2d');
+            
+            // Create gradient background
+            const gradient384 = ctx384.createLinearGradient(0, 0, 384, 384);
+            gradient384.addColorStop(0, '#4a90e2');
+            gradient384.addColorStop(1, '#357abd');
+            
+            ctx384.fillStyle = gradient384;
+            ctx384.fillRect(0, 0, 384, 384);
+            
+            // Add rounded corners
+            ctx384.globalCompositeOperation = 'destination-in';
+            ctx384.beginPath();
+            ctx384.roundRect(0, 0, 384, 384, 38.400000000000006);
+            ctx384.fill();
+            
+            // Reset composite operation
+            ctx384.globalCompositeOperation = 'source-over';
+            
+            // Add car emoji
+            ctx384.font = '153.60000000000002px Arial';
+            ctx384.textAlign = 'center';
+            ctx384.textBaseline = 'middle';
+            ctx384.fillStyle = 'white';
+            ctx384.fillText('🚗', 192, 192);
+        
+            const canvas512 = document.getElementById('canvas-512');
+            const ctx512 = canvas512.getContext('2d');
+            
+            // Create gradient background
+            const gradient512 = ctx512.createLinearGradient(0, 0, 512, 512);
+            gradient512.addColorStop(0, '#4a90e2');
+            gradient512.addColorStop(1, '#357abd');
+            
+            ctx512.fillStyle = gradient512;
+            ctx512.fillRect(0, 0, 512, 512);
+            
+            // Add rounded corners
+            ctx512.globalCompositeOperation = 'destination-in';
+            ctx512.beginPath();
+            ctx512.roundRect(0, 0, 512, 512, 51.2);
+            ctx512.fill();
+            
+            // Reset composite operation
+            ctx512.globalCompositeOperation = 'source-over';
+            
+            // Add car emoji
+            ctx512.font = '204.8px Arial';
+            ctx512.textAlign = 'center';
+            ctx512.textBaseline = 'middle';
+            ctx512.fillStyle = 'white';
+            ctx512.fillText('🚗', 256, 256);
+        
+    </script>
+</body>
+</html>

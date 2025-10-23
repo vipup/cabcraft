@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Simulator - Build Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #4CAF50; }
+        .error { background: #f44336; }
+        .info { background: #2196F3; }
+        .warning { background: #ff9800; }
+        .test-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #4a90e2;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+        }
+        .test-link:hover {
+            background: #357abd;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚗 Traffic Simulator - Build Test</h1>
+    
+    <div class="status info">
+        <h3>📱 PWA Features Test</h3>
+        <p>Testing if your Traffic Simulator is ready for Android deployment...</p>
+    </div>
+
+    <div id="test-results">
+        <div class="status info">Running tests...</div>
+    </div>
+
+    <h3>🔗 Test Links</h3>
+    <a href="/" class="test-link">🏠 Main App</a>
+    <a href="/manifest.json" class="test-link">📋 Manifest</a>
+    <a href="/sw.js" class="test-link">⚙️ Service Worker</a>
+    <a href="/icon-192.png" class="test-link">🎨 App Icon</a>
+
+    <h3>📱 Mobile Testing</h3>
+    <p>Open these URLs on your Android phone:</p>
+    <ul>
+        <li><strong>Local Network:</strong> http://10.1.1.143:4173/</li>
+        <li><strong>Local Network:</strong> http://10.1.1.143:8000/</li>
+    </ul>
+
+    <h3>🚀 Next Steps</h3>
+    <ol>
+        <li>✅ <strong>Build Complete</strong> - Production files in <code>dist/</code></li>
+        <li>🌐 <strong>Deploy to Web</strong> - Use Netlify, Vercel, or GitHub Pages</li>
+        <li>📱 <strong>Convert to APK</strong> - Use PWA Builder (https://www.pwabuilder.com/)</li>
+        <li>🏪 <strong>Submit to Play Store</strong> - Upload APK to Google Play Console</li>
+    </ol>
+
+    <script>
+        // Test PWA features
+        function runTests() {
+            const results = document.getElementById('test-results');
+            results.innerHTML = '';
+
+            // Test 1: Manifest
+            fetch('/manifest.json')
+                .then(response => response.json())
+                .then(manifest => {
+                    results.innerHTML += '<div class="status success">✅ Manifest.json loaded successfully</div>';
+                    results.innerHTML += `<div class="status info">📱 App Name: ${manifest.name}</div>`;
+                    results.innerHTML += `<div class="status info">🎨 Icons: ${manifest.icons.length} icons found</div>`;
+                })
+                .catch(() => {
+                    results.innerHTML += '<div class="status error">❌ Manifest.json not found</div>';
+                });
+
+            // Test 2: Service Worker
+            if ('serviceWorker' in navigator) {
+                results.innerHTML += '<div class="status success">✅ Service Worker supported</div>';
+                navigator.serviceWorker.getRegistration()
+                    .then(registration => {
+                        if (registration) {
+                            results.innerHTML += '<div class="status success">✅ Service Worker registered</div>';
+                        } else {
+                            results.innerHTML += '<div class="status warning">⚠️ Service Worker not registered</div>';
+                        }
+                    });
+            } else {
+                results.innerHTML += '<div class="status error">❌ Service Worker not supported</div>';
+            }
+
+            // Test 3: HTTPS
+            if (location.protocol === 'https:') {
+                results.innerHTML += '<div class="status success">✅ HTTPS enabled (required for PWA)</div>';
+            } else {
+                results.innerHTML += '<div class="status warning">⚠️ HTTP detected (PWA requires HTTPS in production)</div>';
+            }
+
+            // Test 4: Mobile detection
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) {
+                results.innerHTML += '<div class="status success">📱 Mobile device detected</div>';
+            } else {
+                results.innerHTML += '<div class="status info">💻 Desktop device detected</div>';
+            }
+
+            // Test 5: Install prompt
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                results.innerHTML += '<div class="status success">✅ App can be installed as PWA</div>';
+            });
+
+            // Test 6: Performance
+            if ('performance' in window) {
+                const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart;
+                results.innerHTML += `<div class="status info">⚡ Load time: ${loadTime}ms</div>`;
+            }
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', runTests);
+
+        // Add install button if available
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            const installButton = document.createElement('button');
+            installButton.textContent = '📱 Install App';
+            installButton.className = 'test-link';
+            installButton.style.background = '#4CAF50';
+            installButton.onclick = () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            };
+            document.body.appendChild(installButton);
+        });
+    </script>
+</body>
+</html>
