@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:prod": "vite build --config vite.config.prod.js",
     "preview": "vite preview",
+    "preview:prod": "vite preview --config vite.config.prod.js",
     "serve": "python3 -m http.server 8000"
   },
   "dependencies": {
