@@ -9,6 +9,7 @@
     <meta name="description" content="A mobile-optimized traffic simulation game with autonomous ride-sharing">
     <meta name="theme-color" content="#4a90e2">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TrafficSim">
     <meta name="msapplication-TileColor" content="#1a1a1a">
@@ -25,9 +26,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png">
     <link rel="apple-touch-icon" sizes="167x167" href="/icon-192.png">
     
-    <!-- Preload critical resources -->
-    <link rel="preload" href="/src/main.jsx" as="script">
-    <link rel="preload" href="/src/App.jsx" as="script">
+    <!-- Preload critical resources - removed for production build -->
 </head>
 <body>
     <div id="root"></div>

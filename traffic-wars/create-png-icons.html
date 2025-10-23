@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create PNG Icons for Traffic Simulator</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+        .icon { margin: 10px; display: inline-block; text-align: center; }
+        canvas { border: 1px solid #ccc; margin: 5px; background: white; }
+        .download-btn { 
+            display: block; 
+            margin: 5px auto; 
+            padding: 5px 10px; 
+            background: #4a90e2; 
+            color: white; 
+            border: none; 
+            border-radius: 3px; 
+            cursor: pointer; 
+        }
+        .download-btn:hover { background: #357abd; }
+    </style>
+</head>
+<body>
+    <h1>🚗 Traffic Simulator - PNG Icon Generator</h1>
+    <p>Right-click on each icon and "Save image as..." to create PNG files for your PWA:</p>
+    
+    <div id="icons-container"></div>
+    
+    <script>
+        const iconSizes = [16, 32, 72, 96, 128, 144, 152, 192, 384, 512];
+        
+        function createIcon(size) {
+            const container = document.getElementById('icons-container');
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'icon';
+            
+            const title = document.createElement('h3');
+            title.textContent = `${size}x${size}`;
+            iconDiv.appendChild(title);
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            canvas.id = `canvas-${size}`;
+            iconDiv.appendChild(canvas);
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#4a90e2');
+            gradient.addColorStop(1, '#357abd');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Add rounded corners
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, size * 0.1);
+            ctx.fill();
+            
+            // Reset composite operation
+            ctx.globalCompositeOperation = 'source-over';
+            
+            // Add car emoji
+            ctx.font = `${size * 0.4}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'white';
+            ctx.fillText('🚗', size/2, size/2);
+            
+            // Add download button
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'download-btn';
+            downloadBtn.textContent = `Download icon-${size}.png`;
+            downloadBtn.onclick = () => downloadIcon(canvas, `icon-${size}.png`);
+            iconDiv.appendChild(downloadBtn);
+            
+            container.appendChild(iconDiv);
+        }
+        
+        function downloadIcon(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Create all icons
+        iconSizes.forEach(createIcon);
+        
+        // Add instructions
+        const instructions = document.createElement('div');
+        instructions.innerHTML = `
+            <h2>📋 Instructions:</h2>
+            <ol>
+                <li>Click each "Download" button to save the PNG files</li>
+                <li>Save them in your <code>public/</code> folder</li>
+                <li>Make sure the filenames match: <code>icon-16.png</code>, <code>icon-32.png</code>, etc.</li>
+                <li>Update your <code>manifest.json</code> to use PNG files instead of SVG</li>
+            </ol>
+            <p><strong>Required files for PWA:</strong> icon-192.png, icon-512.png</p>
+        `;
+        document.body.appendChild(instructions);
+    </script>
+</body>
+</html>
