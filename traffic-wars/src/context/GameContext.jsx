@@ -42,6 +42,17 @@ export const GameProvider = ({ children }) => {
   const [selectedRideId, setSelectedRideId] = useState(null)
   const [logLevel, setLogLevel] = useState(LOG_LEVELS.INFO)
   
+  // Autonomous simulation state
+  const [isAutonomousMode, setIsAutonomousMode] = useState(false)
+  const [autoSimulationConfig, setAutoSimulationConfig] = useState({
+    spawnRidersInterval: 3000,    // 3 seconds
+    spawnDriversInterval: 5000,   // 5 seconds
+    createRidesInterval: 4000,    // 4 seconds
+    maxRiders: 20,
+    maxDrivers: 15,
+    maxActiveRides: 10
+  })
+  
   // Rides filtering and sorting
   const [ridesFilter, setRidesFilter] = useState({
     search: '',
@@ -166,6 +177,8 @@ export const GameProvider = ({ children }) => {
     ridesSort,
     selectedRideId,
     logLevel,
+    isAutonomousMode,
+    autoSimulationConfig,
     
     // Actions
     updateCamera,
@@ -186,6 +199,8 @@ export const GameProvider = ({ children }) => {
     setRidesPanelHidden,
     setSelectedUnit,
     setSimulationSpeed,
+    setIsAutonomousMode,
+    setAutoSimulationConfig,
     setRidesFilter,
     setRidesSort,
     setSelectedRideId,

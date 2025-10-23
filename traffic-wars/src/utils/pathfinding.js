@@ -121,7 +121,12 @@ export function findPath(start, goal) {
   gScore.set(key(startNode.x, startNode.y), 0)
   fScore.set(key(startNode.x, startNode.y), manhattanDistance(startNode.x, startNode.y, goalNode.x, goalNode.y))
   
-  while (openSet.length > 0) {
+  let iterations = 0
+  const maxIterations = 1000 // Prevent infinite loops
+  
+  while (openSet.length > 0 && iterations < maxIterations) {
+    iterations++
+    
     // Find node with lowest fScore
     let current = openSet[0]
     let currentIdx = 0
@@ -190,8 +195,12 @@ export function findPath(start, goal) {
     debug(`📊 End of iteration: OpenSet size = ${openSet.length}`)
   }
   
-  // No path found - return direct path as fallback
-  warn('⚠️ No path found, using direct route')
+  // Check if we hit the iteration limit
+  if (iterations >= maxIterations) {
+    error(`❌ Pathfinding hit iteration limit (${maxIterations}), using direct route`)
+  } else {
+    warn('⚠️ No path found, using direct route')
+  }
   return [startNode, goalNode]
 }
 

@@ -1,8 +1,24 @@
 import React from 'react'
 import { useGame } from '../../context/GameContext'
+import { useViewportCulling } from '../../hooks/useViewportCulling'
 
 const GameEntities = () => {
   const { drivers, riders, rideRequests } = useGame()
+  const { filterByViewport } = useViewportCulling()
+  
+  // Apply viewport culling to game entities
+  const visibleDrivers = filterByViewport(drivers, (driver) => ({ 
+    x: driver.x - 12, 
+    y: driver.y - 12, 
+    width: 24, 
+    height: 24 
+  }))
+  const visibleRiders = filterByViewport(riders, (rider) => ({ 
+    x: rider.x - 9, 
+    y: rider.y - 9, 
+    width: 18, 
+    height: 18 
+  }))
   
   return (
     <g className="game-entities">
@@ -122,8 +138,8 @@ const GameEntities = () => {
         )
       })}
       
-      {/* Riders */}
-      {riders.map((rider) => (
+      {/* Riders - Only render visible ones */}
+      {visibleRiders.map((rider) => (
         <g key={`rider-${rider.id}`}>
           <circle
             cx={rider.x}
@@ -145,8 +161,8 @@ const GameEntities = () => {
         </g>
       ))}
       
-      {/* Drivers */}
-      {drivers.map((driver) => {
+      {/* Drivers - Only render visible ones */}
+      {visibleDrivers.map((driver) => {
         const isAir = driver.type === 'air'
         const driverIcon = isAir ? '✈️' : '🚗'
         const bgColor = isAir ? '#9b59b6' : '#3498db'

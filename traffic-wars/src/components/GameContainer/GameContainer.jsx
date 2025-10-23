@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { useGame } from '../../context/GameContext'
 import { useTrafficSimulator } from '../../hooks/useTrafficSimulator'
 import { useGameLoop } from '../../hooks/useGameLoop'
+import { useAutonomousSimulation } from '../../hooks/useAutonomousSimulation'
 import TopBanner from '../TopBanner/TopBanner'
 import LeftToolbar from '../LeftToolbar/LeftToolbar'
 import SVGGameCanvas from '../SVGGameCanvas/SVGGameCanvas'
@@ -15,6 +16,9 @@ const GameContainer = () => {
   
   // Start game loop for animations
   useGameLoop()
+  
+  // Initialize autonomous simulation
+  useAutonomousSimulation()
   
   useEffect(() => {
     // Initialize the game world

@@ -1,12 +1,23 @@
 import React from 'react'
 import { useGame } from '../../context/GameContext'
+import { useViewportCulling } from '../../hooks/useViewportCulling'
 
 const CityBackground = () => {
   const { roads, buildings, streetNames, landmarks } = useGame()
+  const { filterByViewport } = useViewportCulling()
+  
+  // Apply viewport culling to reduce DOM nodes
+  const visibleBuildings = filterByViewport(buildings)
+  const visibleStreetNames = filterByViewport(streetNames, (street) => ({ 
+    x: street.x - 50, 
+    y: street.y - 10, 
+    width: 100, 
+    height: 20 
+  }))
   
   return (
     <g className="city-background">
-      {/* Roads */}
+      {/* Roads - Always render all roads as they're part of the grid */}
       {roads.map((road, index) => (
         <rect
           key={`road-${index}`}
@@ -18,10 +29,10 @@ const CityBackground = () => {
         />
       ))}
       
-      {/* Buildings */}
-      {buildings.map((building, index) => (
+      {/* Buildings - Only render visible ones */}
+      {visibleBuildings.map((building, index) => (
         <rect
-          key={`building-${index}`}
+          key={`building-${building.x}-${building.y}`}
           x={building.x}
           y={building.y}
           width={building.width}
@@ -32,10 +43,10 @@ const CityBackground = () => {
         />
       ))}
       
-      {/* Street Names */}
-      {streetNames.map((street, index) => (
+      {/* Street Names - Only render visible ones */}
+      {visibleStreetNames.map((street, index) => (
         <text
-          key={`street-${index}`}
+          key={`street-${street.x}-${street.y}`}
           x={street.x}
           y={street.y}
           fill="white"

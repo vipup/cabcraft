@@ -13,3 +13,27 @@
   cursor: grabbing;
 }
 
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .game-svg {
+    /* Optimize for touch on mobile */
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  .game-svg.dragging {
+    cursor: grabbing;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .game-svg {
+    /* Optimize for retina displays */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+

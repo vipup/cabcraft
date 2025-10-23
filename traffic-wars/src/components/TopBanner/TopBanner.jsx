@@ -1,10 +1,31 @@
 import React from 'react'
 import { useGame } from '../../context/GameContext'
+import { useAutonomousSimulation } from '../../hooks/useAutonomousSimulation'
 import { LOG_LEVELS, LOG_LEVEL_NAMES, LOG_LEVEL_COLORS } from '../../utils/logger'
 import './TopBanner.css'
 
 const TopBanner = () => {
-  const { earnings, rating, activeRides, ridesPanelHidden, setRidesPanelHidden, selectedUnit, simulationSpeed, setSimulationSpeed, logLevel, setLogLevel } = useGame()
+  const { 
+    earnings, 
+    rating, 
+    activeRides, 
+    ridesPanelHidden, 
+    setRidesPanelHidden, 
+    selectedUnit, 
+    simulationSpeed, 
+    setSimulationSpeed, 
+    logLevel, 
+    setLogLevel,
+    isAutonomousMode,
+    setIsAutonomousMode,
+    autoSimulationConfig,
+    setAutoSimulationConfig,
+    drivers,
+    riders,
+    rideRequests
+  } = useGame()
+  
+  const { startAutonomousSimulation, stopAutonomousSimulation } = useAutonomousSimulation()
   
   const handleSpeedChange = (e) => {
     setSimulationSpeed(parseFloat(e.target.value))
@@ -14,11 +35,22 @@ const TopBanner = () => {
     setLogLevel(parseInt(e.target.value))
   }
   
+  const handleAutonomousToggle = () => {
+    setIsAutonomousMode(!isAutonomousMode)
+  }
+  
+  const handleConfigChange = (key, value) => {
+    setAutoSimulationConfig(prev => ({
+      ...prev,
+      [key]: parseInt(value)
+    }))
+  }
+  
   return (
     <div className="top-banner">
       <div className="banner-title">🚗 Traffic Simulator</div>
       <div className="banner-achievements">
-        ${earnings} • ⭐{rating.toFixed(1)} • Active {activeRides}
+        ${earnings} • ⭐{rating.toFixed(1)} • Active {activeRides} • 🚗{drivers.length} • 🏍️{riders.length} • 📱{rideRequests.length}
       </div>
       <div className="banner-speed-control">
         <label htmlFor="speed-slider">Speed: {simulationSpeed.toFixed(2)}x</label>
@@ -34,6 +66,13 @@ const TopBanner = () => {
         />
       </div>
       <div className="banner-actions">
+        <button 
+          className={`unit-button autonomous-btn ${isAutonomousMode ? 'active' : ''}`}
+          onClick={handleAutonomousToggle}
+          title={isAutonomousMode ? 'Stop autonomous simulation' : 'Start autonomous simulation'}
+        >
+          🤖 {isAutonomousMode ? 'Auto ON' : 'Auto OFF'}
+        </button>
         <button 
           className="unit-button toggle-rides-btn" 
           onClick={() => setRidesPanelHidden(!ridesPanelHidden)}
@@ -63,6 +102,43 @@ const TopBanner = () => {
             </option>
           </select>
         </div>
+        {isAutonomousMode && (
+          <div className="autonomous-config">
+            <div className="config-item">
+              <label>Riders:</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={autoSimulationConfig.maxRiders}
+                onChange={(e) => handleConfigChange('maxRiders', e.target.value)}
+                className="config-input"
+              />
+            </div>
+            <div className="config-item">
+              <label>Drivers:</label>
+              <input
+                type="number"
+                min="1"
+                max="30"
+                value={autoSimulationConfig.maxDrivers}
+                onChange={(e) => handleConfigChange('maxDrivers', e.target.value)}
+                className="config-input"
+              />
+            </div>
+            <div className="config-item">
+              <label>Rides:</label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={autoSimulationConfig.maxActiveRides}
+                onChange={(e) => handleConfigChange('maxActiveRides', e.target.value)}
+                className="config-input"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

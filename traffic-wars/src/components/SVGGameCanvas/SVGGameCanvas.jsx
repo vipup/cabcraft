@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react'
 import { useGame } from '../../context/GameContext'
+import { useMobileOptimization } from '../../hooks/useMobileOptimization'
 import CityBackground from './CityBackground'
 import GameEntities from './GameEntities'
 import './SVGGameCanvas.css'
@@ -7,6 +8,7 @@ import './SVGGameCanvas.css'
 const SVGGameCanvas = () => {
   const svgRef = useRef(null)
   const { worldSize, camera, updateCamera, selectedRideId, setSelectedRideId, rideRequests, drivers } = useGame()
+  const { isMobile } = useMobileOptimization()
   const [isDragging, setIsDragging] = React.useState(false)
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 })
   const trackingIntervalRef = useRef(null)
@@ -49,13 +51,66 @@ const SVGGameCanvas = () => {
     updateCamera({ zoom: newZoom })
   }
   
+  // Touch event handlers for mobile
+  const handleTouchStart = (e) => {
+    e.preventDefault()
+    if (e.touches.length === 1) {
+      // Single touch - start dragging
+      if (selectedRideId) {
+        setSelectedRideId(null)
+      }
+      setIsDragging(true)
+      setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY })
+    }
+  }
+  
+  const handleTouchMove = (e) => {
+    e.preventDefault()
+    if (!isDragging || e.touches.length !== 1) return
+    
+    const touch = e.touches[0]
+    const dx = (touch.clientX - dragStart.x) / camera.zoom
+    const dy = (touch.clientY - dragStart.y) / camera.zoom
+    
+    // Calculate proper bounds based on viewport and zoom
+    const halfViewWidth = (window.innerWidth - 56 - 300) / (2 * camera.zoom)
+    const halfViewHeight = (window.innerHeight - 48 - 32) / (2 * camera.zoom)
+    
+    updateCamera({
+      x: Math.max(halfViewWidth, Math.min(worldSize.width - halfViewWidth, camera.x - dx)),
+      y: Math.max(halfViewHeight, Math.min(worldSize.height - halfViewHeight, camera.y - dy))
+    })
+    
+    setDragStart({ x: touch.clientX, y: touch.clientY })
+  }
+  
+  const handleTouchEnd = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+  
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
     
     svg.addEventListener('wheel', handleWheel, { passive: false })
-    return () => svg.removeEventListener('wheel', handleWheel)
-  }, [camera.zoom])
+    
+    // Add touch event listeners for mobile
+    if (isMobile) {
+      svg.addEventListener('touchstart', handleTouchStart, { passive: false })
+      svg.addEventListener('touchmove', handleTouchMove, { passive: false })
+      svg.addEventListener('touchend', handleTouchEnd, { passive: false })
+    }
+    
+    return () => {
+      svg.removeEventListener('wheel', handleWheel)
+      if (isMobile) {
+        svg.removeEventListener('touchstart', handleTouchStart)
+        svg.removeEventListener('touchmove', handleTouchMove)
+        svg.removeEventListener('touchend', handleTouchEnd)
+      }
+    }
+  }, [camera.zoom, isMobile])
   
   // Camera tracking for selected ride
   useEffect(() => {

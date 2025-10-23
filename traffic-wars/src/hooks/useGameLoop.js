@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useGame } from '../context/GameContext'
+import { useMobileOptimization } from './useMobileOptimization'
 import { findPath } from '../utils/pathfinding'
 import { debug, info, warn, error, logger } from '../utils/logger'
 
@@ -20,10 +21,14 @@ export const useGameLoop = () => {
     addDriverDistance
   } = useGame()
   
+  const { optimalFrameRate, isMobile } = useMobileOptimization()
+  
   const animationFrameRef = useRef(null)
   const gameStateRef = useRef({ drivers: [], riders: [], rideRequests: [] })
   const updatersRef = useRef({})
   const simulationSpeedRef = useRef(1.0)
+  const lastFrameTimeRef = useRef(0)
+  const frameIntervalRef = useRef(1000 / 60) // Default 60 FPS
   
   // Keep refs up to date with latest state
   gameStateRef.current = { drivers, riders, rideRequests }
@@ -34,13 +39,21 @@ export const useGameLoop = () => {
     updateRideRequest,
     removeRideRequest,
     addEarnings,
-    setActiveRides
+    setActiveRides,
+    addCompletedRide,
+    addDriverDistance
   }
 
   // Update logger level when it changes
   useEffect(() => {
     logger.setLevel(logLevel)
   }, [logLevel])
+  
+  // Update frame rate when optimal frame rate changes
+  useEffect(() => {
+    frameIntervalRef.current = 1000 / optimalFrameRate
+    info(`🎮 Game loop frame rate set to ${optimalFrameRate} FPS (Mobile: ${isMobile})`)
+  }, [optimalFrameRate, isMobile])
   
   // Helper function to assign idle drivers to waiting rides
   const assignDriverToWaitingRides = (drivers, rideRequests, updateDriver, updateRideRequest) => {
@@ -104,7 +117,14 @@ export const useGameLoop = () => {
     let lastTime = Date.now()
     let frameCount = 0
     
-    const gameLoop = () => {
+    const gameLoop = (currentTime) => {
+      // Frame rate throttling for mobile optimization
+      if (currentTime - lastFrameTimeRef.current < frameIntervalRef.current) {
+        animationFrameRef.current = requestAnimationFrame(gameLoop)
+        return
+      }
+      lastFrameTimeRef.current = currentTime
+      
       const now = Date.now()
       const deltaTime = ((now - lastTime) / 1000) * simulationSpeedRef.current // Apply simulation speed
       lastTime = now
@@ -115,7 +135,7 @@ export const useGameLoop = () => {
       }
       
       const { drivers, riders, rideRequests } = gameStateRef.current
-      const { updateDriver, updateRider, updateRideRequest, removeRideRequest, addEarnings, setActiveRides } = updatersRef.current
+      const { updateDriver, updateRider, updateRideRequest, removeRideRequest, addEarnings, setActiveRides, addCompletedRide, addDriverDistance } = updatersRef.current
       
       // Update all drivers
       drivers.forEach(driver => {
@@ -124,12 +144,28 @@ export const useGameLoop = () => {
           if (driver.type === 'ground') {
             // Initialize path if not exists
             if (!driver.path || driver.path.length === 0 || driver.pathIndex === undefined) {
-              const path = findPath(
-                { x: driver.x, y: driver.y },
-                { x: driver.targetX, y: driver.targetY }
-              )
-              debug(`🗺️ Ground Driver #${driver.id}: Initializing path to pickup with ${path.length} waypoints`)
-              updateDriver(driver.id, { path, pathIndex: 0 })
+              try {
+                const path = findPath(
+                  { x: driver.x, y: driver.y },
+                  { x: driver.targetX, y: driver.targetY }
+                )
+                if (path && path.length > 0) {
+                  debug(`🗺️ Ground Driver #${driver.id}: Initializing path to pickup with ${path.length} waypoints`)
+                  updateDriver(driver.id, { path, pathIndex: 0 })
+                } else {
+                  warn(`⚠️ Ground Driver #${driver.id}: Failed to find path to pickup, switching to direct movement`)
+                  updateDriver(driver.id, { 
+                    path: [{ x: driver.targetX, y: driver.targetY }], 
+                    pathIndex: 0 
+                  })
+                }
+              } catch (error) {
+                error(`❌ Ground Driver #${driver.id}: Pathfinding error: ${error.message}`)
+                updateDriver(driver.id, { 
+                  path: [{ x: driver.targetX, y: driver.targetY }], 
+                  pathIndex: 0 
+                })
+              }
               return
             }
             
@@ -142,10 +178,20 @@ export const useGameLoop = () => {
                 info(`✅ Ground Driver #${driver.id} picked up rider for ride #${ride.id}`)
                 
                 // Calculate new path for dropoff
-                const dropoffPath = findPath(
-                  { x: ride.pickupX, y: ride.pickupY },
-                  { x: ride.dropoffX, y: ride.dropoffY }
-                )
+                let dropoffPath
+                try {
+                  dropoffPath = findPath(
+                    { x: ride.pickupX, y: ride.pickupY },
+                    { x: ride.dropoffX, y: ride.dropoffY }
+                  )
+                  if (!dropoffPath || dropoffPath.length === 0) {
+                    warn(`⚠️ Ground Driver #${driver.id}: Failed to find dropoff path, using direct route`)
+                    dropoffPath = [{ x: ride.dropoffX, y: ride.dropoffY }]
+                  }
+                } catch (error) {
+                  error(`❌ Ground Driver #${driver.id}: Dropoff pathfinding error: ${error.message}`)
+                  dropoffPath = [{ x: ride.dropoffX, y: ride.dropoffY }]
+                }
                 
                 updateDriver(driver.id, {
                   status: 'on_ride',
@@ -260,12 +306,28 @@ export const useGameLoop = () => {
               // Path should have been set during pickup, but recalculate if missing
               const ride = rideRequests.find(r => r.assignedDriver?.id === driver.id)
               if (ride) {
-                const path = findPath(
-                  { x: driver.x, y: driver.y },
-                  { x: ride.dropoffX, y: ride.dropoffY }
-                )
-                debug(`🗺️ Ground Driver #${driver.id}: Recalculating path to dropoff with ${path.length} waypoints`)
-                updateDriver(driver.id, { path, pathIndex: 0 })
+                try {
+                  const path = findPath(
+                    { x: driver.x, y: driver.y },
+                    { x: ride.dropoffX, y: ride.dropoffY }
+                  )
+                  if (path && path.length > 0) {
+                    debug(`🗺️ Ground Driver #${driver.id}: Recalculating path to dropoff with ${path.length} waypoints`)
+                    updateDriver(driver.id, { path, pathIndex: 0 })
+                  } else {
+                    warn(`⚠️ Ground Driver #${driver.id}: Failed to recalculate dropoff path, using direct route`)
+                    updateDriver(driver.id, { 
+                      path: [{ x: ride.dropoffX, y: ride.dropoffY }], 
+                      pathIndex: 0 
+                    })
+                  }
+                } catch (error) {
+                  error(`❌ Ground Driver #${driver.id}: Dropoff pathfinding error: ${error.message}`)
+                  updateDriver(driver.id, { 
+                    path: [{ x: ride.dropoffX, y: ride.dropoffY }], 
+                    pathIndex: 0 
+                  })
+                }
               }
               return
             }
@@ -461,6 +523,39 @@ export const useGameLoop = () => {
       // Periodically check for unassigned rides (every 60 frames = ~1 second)
       if (frameCount % 60 === 0) {
         assignDriverToWaitingRides(drivers, rideRequests, updateDriver, updateRideRequest)
+        
+        // Check for stuck rides (rides that have been in progress for more than 30 seconds)
+        const currentTime = Date.now()
+        const stuckRides = rideRequests.filter(ride => {
+          const rideAge = currentTime - ride.createdAt
+          return rideAge > 30000 && (ride.status === 'going_to_rider' || ride.status === 'in_ride')
+        })
+        
+        if (stuckRides.length > 0) {
+          warn(`⚠️ Found ${stuckRides.length} stuck rides, cleaning them up`)
+          stuckRides.forEach(ride => {
+            // Reset driver to idle
+            if (ride.assignedDriver) {
+              updateDriver(ride.assignedDriver.id, {
+                status: 'idle',
+                targetX: undefined,
+                targetY: undefined,
+                path: undefined,
+                pathIndex: undefined
+              })
+            }
+            
+            // Reset rider to idle
+            const rider = riders.find(r => r.id === ride.riderId)
+            if (rider) {
+              updateRider(rider.id, { status: 'idle' })
+            }
+            
+            // Remove the stuck ride
+            removeRideRequest(ride.id)
+            warn(`🧹 Cleaned up stuck ride #${ride.id}`)
+          })
+        }
       }
       
       animationFrameRef.current = requestAnimationFrame(gameLoop)
