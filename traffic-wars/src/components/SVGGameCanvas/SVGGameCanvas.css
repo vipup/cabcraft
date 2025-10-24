@@ -16,6 +16,9 @@
 /* Mobile optimizations */
 @media (max-width: 768px) {
   .game-svg {
+    /* Mobile layout - full width, hide right panel */
+    left: 56px;
+    right: 0px;
     /* Optimize for touch on mobile */
     touch-action: none;
     -webkit-touch-callout: none;

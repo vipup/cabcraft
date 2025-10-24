@@ -12,7 +12,13 @@ export const useMobileOptimization = () => {
   const detectMobile = useCallback(() => {
     const userAgent = navigator.userAgent
     const mobileRegex = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
-    return mobileRegex.test(userAgent)
+    const isUserAgentMobile = mobileRegex.test(userAgent)
+    
+    // Also detect mobile based on viewport size and touch capability
+    const isViewportMobile = window.innerWidth <= 768 || window.innerHeight <= 768
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    
+    return isUserAgentMobile || (isViewportMobile && hasTouch)
   }, [])
   
   // Detect low-end device based on hardware concurrency and memory

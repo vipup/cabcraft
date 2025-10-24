@@ -138,3 +138,10 @@
   font-size: 14px;
 }
 
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .active-rides-panel {
+    display: none;
+  }
+}
+
