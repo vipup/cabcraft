@@ -1,9 +1,12 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useGame } from '../../context/GameContext'
+import { useMobileOptimization } from '../../hooks/useMobileOptimization'
 import './ActiveRidesPanel.css'
 
 const ActiveRidesPanel = () => {
-  const { rideRequests, ridesFilter, ridesSort, selectedRideId, setRidesFilter, setRidesSort, setSelectedRideId } = useGame()
+  const { rideRequests, ridesFilter, ridesSort, selectedRideId, autoSwitchRides, setRidesFilter, setRidesSort, setSelectedRideId, setAutoSwitchRides } = useGame()
+  const { isMobile } = useMobileOptimization()
+  const [isVisible, setIsVisible] = useState(false)
   
   const handleSearchChange = (e) => {
     setRidesFilter({ ...ridesFilter, search: e.target.value.toLowerCase() })
@@ -22,6 +25,25 @@ const ActiveRidesPanel = () => {
       ascending: ridesSort.field === field ? !ridesSort.ascending : true
     })
   }
+  
+  const toggleVisibility = () => {
+    setIsVisible(!isVisible)
+  }
+  
+  // Auto-hide on mobile when clicking outside
+  useEffect(() => {
+    if (isMobile && isVisible) {
+      const handleClickOutside = (e) => {
+        const panel = document.querySelector('.active-rides-panel')
+        if (panel && !panel.contains(e.target)) {
+          setIsVisible(false)
+        }
+      }
+      
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [isMobile, isVisible])
   
   // Filter and sort rides
   let filteredRides = rideRequests.filter(ride => {
@@ -45,8 +67,20 @@ const ActiveRidesPanel = () => {
   })
   
   return (
-    <div className="active-rides-panel">
-      <h3>Active Rides</h3>
+    <>
+      {/* Mobile toggle button */}
+      {isMobile && (
+        <button 
+          className="mobile-rides-toggle"
+          onClick={toggleVisibility}
+          title="Toggle Rides Panel"
+        >
+          📋 {isVisible ? 'Hide' : 'Show'} Rides
+        </button>
+      )}
+      
+      <div className={`active-rides-panel ${isMobile && isVisible ? 'visible' : ''}`}>
+        <h3>Active Rides</h3>
       
       <div className="rides-controls">
         <div className="search-controls">
@@ -87,6 +121,17 @@ const ActiveRidesPanel = () => {
               <span className="status-bullet completed">✅</span>
             </label>
           </div>
+        </div>
+        
+        <div className="auto-switch-controls">
+          <label className="auto-switch-label">
+            <input 
+              type="checkbox" 
+              checked={autoSwitchRides}
+              onChange={(e) => setAutoSwitchRides(e.target.checked)}
+            />
+            <span className="auto-switch-text">🔄 Auto Switch</span>
+          </label>
         </div>
         
         <div className="quick-stats">
@@ -137,7 +182,8 @@ const ActiveRidesPanel = () => {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 

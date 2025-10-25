@@ -18,7 +18,11 @@ export const useMobileOptimization = () => {
     const isViewportMobile = window.innerWidth <= 768 || window.innerHeight <= 768
     const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
     
-    return isUserAgentMobile || (isViewportMobile && hasTouch)
+    // For development/testing: if viewport is mobile-sized, treat as mobile
+    // This helps with browser testing and responsive design
+    const isMobileViewport = window.innerWidth <= 768
+    
+    return isUserAgentMobile || (isViewportMobile && hasTouch) || isMobileViewport
   }, [])
   
   // Detect low-end device based on hardware concurrency and memory
@@ -54,22 +58,29 @@ export const useMobileOptimization = () => {
     console.log(`📱 Device Detection: Mobile=${mobile}, LowEnd=${lowEnd}, TargetFPS=${frameRate}`)
   }, [detectMobile, detectLowEndDevice, calculateOptimalFrameRate])
   
-  // Handle orientation changes
+  // Handle orientation changes and viewport changes
   useEffect(() => {
-    const handleOrientationChange = () => {
-      // Recalculate frame rate on orientation change
-      const newFrameRate = calculateOptimalFrameRate()
-      setOptimalFrameRate(newFrameRate)
+    const handleViewportChange = () => {
+      // Recalculate mobile detection and frame rate on viewport change
+      const mobile = detectMobile()
+      const lowEnd = detectLowEndDevice()
+      const frameRate = calculateOptimalFrameRate()
+      
+      setIsMobile(mobile)
+      setIsLowEndDevice(lowEnd)
+      setOptimalFrameRate(frameRate)
+      
+      console.log(`📱 Device Detection (Viewport Change): Mobile=${mobile}, LowEnd=${lowEnd}, TargetFPS=${frameRate}`)
     }
     
-    window.addEventListener('orientationchange', handleOrientationChange)
-    window.addEventListener('resize', handleOrientationChange)
+    window.addEventListener('orientationchange', handleViewportChange)
+    window.addEventListener('resize', handleViewportChange)
     
     return () => {
-      window.removeEventListener('orientationchange', handleOrientationChange)
-      window.removeEventListener('resize', handleOrientationChange)
+      window.removeEventListener('orientationchange', handleViewportChange)
+      window.removeEventListener('resize', handleViewportChange)
     }
-  }, [calculateOptimalFrameRate])
+  }, [detectMobile, detectLowEndDevice, calculateOptimalFrameRate])
   
   return {
     isMobile,
