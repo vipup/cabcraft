@@ -36,7 +36,8 @@ check_docker() {
         exit 1
     fi
     
-    if ! command -v docker-compose &> /dev/null; then
+    # Check for both docker-compose (standalone) and docker compose (plugin)
+    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
         print_error "Docker Compose is not installed. Please install Docker Compose first."
         exit 1
     fi
@@ -62,7 +63,7 @@ start_docker() {
     check_docker
     
     # Build and start the container
-    docker-compose up --build -d
+    docker compose up --build -d
     
     print_success "Traffic Simulator is starting up..."
     print_status "The application will be available at: http://localhost:8080"
@@ -75,7 +76,7 @@ start_docker() {
         print_status "Open your browser and go to: http://localhost:8080"
     else
         print_warning "Container is starting up, please wait a moment..."
-        print_status "Check logs with: docker-compose logs -f"
+        print_status "Check logs with: docker compose logs -f"
     fi
 }
 
@@ -86,14 +87,14 @@ start_docker_dev() {
     check_docker
     
     # Start development container
-    docker-compose --profile dev up --build -d traffic-simulator-dev
+    docker compose --profile dev up --build -d traffic-simulator-dev
     
     print_success "Traffic Simulator development server is starting..."
     print_status "The development server will be available at: http://localhost:8000"
     print_status "Hot reload is enabled for development"
     
     # Show logs
-    docker-compose --profile dev logs -f traffic-simulator-dev
+    docker compose --profile dev logs -f traffic-simulator-dev
 }
 
 # Function to start with Node.js (local development)
@@ -161,21 +162,21 @@ show_help() {
 # Function to stop containers
 stop_containers() {
     print_status "Stopping Traffic Simulator containers..."
-    docker-compose down
-    docker-compose --profile dev down
+    docker compose down
+    docker compose --profile dev down
     print_success "All containers stopped."
 }
 
 # Function to show logs
 show_logs() {
     print_status "Showing Traffic Simulator logs..."
-    docker-compose logs -f
+    docker compose logs -f
 }
 
 # Function to show status
 show_status() {
     print_status "Traffic Simulator container status:"
-    docker-compose ps
+    docker compose ps
 }
 
 # Main script logic
@@ -210,3 +211,4 @@ case "${1:-docker}" in
         exit 1
         ;;
 esac
+

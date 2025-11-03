@@ -41,3 +41,4 @@ services:
     command: npm run dev
     profiles:
       - dev
+

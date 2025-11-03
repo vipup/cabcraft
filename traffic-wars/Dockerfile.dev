@@ -21,3 +21,4 @@ EXPOSE 8000
 
 # Start development server
 CMD ["npm", "run", "dev"]
+

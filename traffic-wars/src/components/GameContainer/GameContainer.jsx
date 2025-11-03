@@ -11,6 +11,7 @@ import ActiveRidesPanel from '../ActiveRidesPanel/ActiveRidesPanel'
 import './GameContainer.css'
 
 const GameContainer = () => {
+  console.log('🎯 GameContainer component rendering...')
   const { ridesPanelHidden } = useGame()
   const { initializeGame } = useTrafficSimulator()
   

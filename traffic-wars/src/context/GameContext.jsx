@@ -41,6 +41,7 @@ export const GameProvider = ({ children }) => {
   const [simulationSpeed, setSimulationSpeed] = useState(1.0)
   const [selectedRideId, setSelectedRideId] = useState(null)
   const [logLevel, setLogLevel] = useState(LOG_LEVELS.INFO)
+  const [autoSwitchRides, setAutoSwitchRides] = useState(false)
   
   // Autonomous simulation state
   const [isAutonomousMode, setIsAutonomousMode] = useState(false)
@@ -152,6 +153,46 @@ export const GameProvider = ({ children }) => {
     }, 1000)
     return () => clearInterval(interval)
   }, [])
+
+  // Auto-switch rides logic
+  useEffect(() => {
+    if (!autoSwitchRides) return
+
+    // Filter rides based on current filter settings
+    const filteredRides = rideRequests.filter(ride => {
+      const matchesSearch = !ridesFilter.search || 
+        ride.id.toString().includes(ridesFilter.search) ||
+        ride.fare.toString().includes(ridesFilter.search)
+      
+      const status = ride.assignedDriver ? 
+        (ride.assignedDriver.status === 'on_ride' ? 'inProgress' : 'waiting') :
+        'waiting'
+      const matchesStatus = ridesFilter.status[status]
+      
+      return matchesSearch && matchesStatus
+    })
+
+    // Sort rides based on current sort settings
+    const sortedRides = [...filteredRides].sort((a, b) => {
+      const aVal = a[ridesSort.field] || 0
+      const bVal = b[ridesSort.field] || 0
+      return ridesSort.ascending ? aVal - bVal : bVal - aVal
+    })
+
+    // If no rides are available, clear selection
+    if (sortedRides.length === 0) {
+      if (selectedRideId !== null) {
+        setSelectedRideId(null)
+      }
+      return
+    }
+
+    // If currently selected ride is no longer in the filtered list, select the first one
+    const currentSelectedExists = sortedRides.some(ride => ride.id === selectedRideId)
+    if (!currentSelectedExists) {
+      setSelectedRideId(sortedRides[0].id)
+    }
+  }, [autoSwitchRides, rideRequests, ridesFilter, ridesSort, selectedRideId])
   
   const value = {
     // State
@@ -179,6 +220,7 @@ export const GameProvider = ({ children }) => {
     logLevel,
     isAutonomousMode,
     autoSimulationConfig,
+    autoSwitchRides,
     
     // Actions
     updateCamera,
@@ -209,7 +251,8 @@ export const GameProvider = ({ children }) => {
     setRoads,
     setStreetNames,
     setLandmarks,
-    setActiveRides
+    setActiveRides,
+    setAutoSwitchRides
   }
   
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
