@@ -97,3 +97,4 @@ print_status "Next steps:"
 print_status "1. Log out and log back in (or run: newgrp docker)"
 print_status "2. Run: ./start.sh docker"
 print_status "3. Open: http://localhost:8080"
+

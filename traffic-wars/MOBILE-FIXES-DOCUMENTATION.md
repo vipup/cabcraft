@@ -312,3 +312,4 @@ location /manifest.json {
 **Mobile fixes implemented**: Touch controls, pinch zoom, responsive layout
 **Ready for**: PWA installation and mobile gaming
 
+
